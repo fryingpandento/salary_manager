@@ -1,0 +1,12 @@
+{
+  "update_at": "2026-02-14T15:07:36",
+  "next_schedule": {
+    "exists": true,
+    "date_str": "2/15(日)",
+    "time_str": "09:00",
+    "end_time_str": "13:00",
+    "location": "まいばすけっと",
+    "type": "mybasket",
+    "salary_prediction": 5160
+  }
+}
