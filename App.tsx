@@ -96,18 +96,8 @@ export default function App() {
     const scraperShifts = parseTutorShifts(tutorDataRaw as ScraperData[])
       .filter(s => !excludedTutorShifts.includes(getShiftId(s)));
 
-    // 2. MyBasket Shifts (Generate for current month +/- 1 month)
-    const [year, month] = currentMonth.split('-').map(Number);
-    const myBasketShiftsNext = generateMyBasketShifts(year, month + 1 > 12 ? 1 : month + 1);
-    const myBasketShiftsCurr = generateMyBasketShifts(year, month);
-    const myBasketShiftsPrev = generateMyBasketShifts(year, month - 1 < 1 ? 12 : month - 1);
-
-    // Filter MyBasket by excluded dates
-    const generated = [...myBasketShiftsCurr, ...myBasketShiftsPrev, ...myBasketShiftsNext]
-      .filter(s => !excludedDates.includes(s.date));
-
     // Combine all
-    const combined = [...scraperShifts, ...manualShifts, ...generated];
+    const combined = [...scraperShifts, ...manualShifts];
     setAllShifts(combined);
 
 
