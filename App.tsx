@@ -237,6 +237,33 @@ export default function App() {
     setRangeTotal(total);
   };
 
+  // Helper: Get color based on level
+  const getLevelColor = (count: number) => {
+    if (count >= 50) return '#FFD700'; // Gold
+    if (count >= 20) return '#C0C0C0'; // Silver
+    if (count >= 10) return '#cd7f32'; // Bronze
+    if (count >= 5) return '#00adf5'; // Blue
+    return '#888'; // Gray
+  };
+
+  // Helper: Get unique color for location name
+  const getStringColor = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+    return '#' + '00000'.substring(0, 6 - c.length) + c;
+  };
+
+  const getRankTitle = (count: number) => {
+    if (count >= 50) return '達人';
+    if (count >= 20) return '熟練';
+    if (count >= 10) return '常連';
+    if (count >= 5) return '見習い';
+    return '新人';
+  };
+
   // Date/Time Picker Handlers
   const onStartTimeChange = (event: any, selectedDate?: Date) => {
     setShowStartTimePicker(false);
@@ -474,15 +501,40 @@ export default function App() {
               </View>
 
               <View style={styles.row}>
-                <TouchableOpacity onPress={() => setShowStartTimePicker(true)} style={[styles.input, { flex: 1, marginRight: 5, justifyContent: 'center' }]}>
-                  <Text style={styles.inputText}>{newShiftStart || "開始"}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setShowEndTimePicker(true)} style={[styles.input, { flex: 1, marginLeft: 5, justifyContent: 'center' }]}>
-                  <Text style={styles.inputText}>{newShiftEnd || "終了"}</Text>
-                </TouchableOpacity>
+                {Platform.OS === 'web' ? (
+                  <View style={[styles.input, { flex: 1, marginRight: 5, justifyContent: 'center' }]}>
+                    <DateTimePicker
+                      value={getTimeDate(newShiftStart)}
+                      mode="time"
+                      is24Hour={true}
+                      onChange={onStartTimeChange}
+                      style={{ width: '100%', height: '100%', opacity: 1 }}
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => setShowStartTimePicker(true)} style={[styles.input, { flex: 1, marginRight: 5, justifyContent: 'center' }]}>
+                    <Text style={styles.inputText}>{newShiftStart || "開始"}</Text>
+                  </TouchableOpacity>
+                )}
+
+                {Platform.OS === 'web' ? (
+                  <View style={[styles.input, { flex: 1, marginLeft: 5, justifyContent: 'center' }]}>
+                    <DateTimePicker
+                      value={getTimeDate(newShiftEnd)}
+                      mode="time"
+                      is24Hour={true}
+                      onChange={onEndTimeChange}
+                      style={{ width: '100%', height: '100%', opacity: 1 }}
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => setShowEndTimePicker(true)} style={[styles.input, { flex: 1, marginLeft: 5, justifyContent: 'center' }]}>
+                    <Text style={styles.inputText}>{newShiftEnd || "終了"}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
-              {showStartTimePicker && (
+              {Platform.OS !== 'web' && showStartTimePicker && (
                 <DateTimePicker
                   value={getTimeDate(newShiftStart)}
                   mode="time"
@@ -491,7 +543,7 @@ export default function App() {
                   onChange={onStartTimeChange}
                 />
               )}
-              {showEndTimePicker && (
+              {Platform.OS !== 'web' && showEndTimePicker && (
                 <DateTimePicker
                   value={getTimeDate(newShiftEnd)}
                   mode="time"
@@ -515,15 +567,37 @@ export default function App() {
             <View style={styles.modalView}>
               <Text style={styles.modalTitle}>期間集計</Text>
               <Text style={styles.label}>開始日 (YYYY-MM-DD)</Text>
-              <TouchableOpacity onPress={() => setShowRangeStartDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
-                <Text style={styles.inputText}>{rangeStart || "タップして選択"}</Text>
-              </TouchableOpacity>
+              {Platform.OS === 'web' ? (
+                <View style={[styles.input, { justifyContent: 'center' }]}>
+                  <DateTimePicker
+                    value={getDateObj(rangeStart)}
+                    mode="date"
+                    onChange={onRangeStartDateChange}
+                    style={{ width: '100%', height: '100%', opacity: 1 }}
+                  />
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setShowRangeStartDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
+                  <Text style={styles.inputText}>{rangeStart || "タップして選択"}</Text>
+                </TouchableOpacity>
+              )}
               <Text style={styles.label}>終了日 (YYYY-MM-DD)</Text>
-              <TouchableOpacity onPress={() => setShowRangeEndDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
-                <Text style={styles.inputText}>{rangeEnd || "タップして選択"}</Text>
-              </TouchableOpacity>
+              {Platform.OS === 'web' ? (
+                <View style={[styles.input, { justifyContent: 'center' }]}>
+                  <DateTimePicker
+                    value={getDateObj(rangeEnd)}
+                    mode="date"
+                    onChange={onRangeEndDateChange}
+                    style={{ width: '100%', height: '100%', opacity: 1 }}
+                  />
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setShowRangeEndDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
+                  <Text style={styles.inputText}>{rangeEnd || "タップして選択"}</Text>
+                </TouchableOpacity>
+              )}
 
-              {showRangeStartDatePicker && (
+              {Platform.OS !== 'web' && showRangeStartDatePicker && (
                 <DateTimePicker
                   value={getDateObj(rangeStart)}
                   mode="date"
@@ -531,7 +605,7 @@ export default function App() {
                   onChange={onRangeStartDateChange}
                 />
               )}
-              {showRangeEndDatePicker && (
+              {Platform.OS !== 'web' && showRangeEndDatePicker && (
                 <DateTimePicker
                   value={getDateObj(rangeEnd)}
                   mode="date"
@@ -571,12 +645,15 @@ export default function App() {
               numColumns={2}
               contentContainerStyle={{ padding: 10 }}
               renderItem={({ item }) => (
-                <View style={styles.zukanItem}>
-                  <View style={[styles.zukanIcon, { backgroundColor: item.count > 0 ? '#00adf5' : '#ccc' }]}>
+                <View style={[styles.zukanItem, { borderColor: getLevelColor(item.count), borderWidth: 2 }]}>
+                  <View style={[styles.zukanIcon, { backgroundColor: getStringColor(item.name) }]}>
                     <Text style={styles.zukanIconText}>{item.name.substring(0, 1)}</Text>
                   </View>
                   <Text style={styles.zukanName}>{item.name}</Text>
-                  <Text style={styles.zukanCount}>Lv.{item.count}</Text>
+                  <View style={styles.zukanBadgeContainer}>
+                    <Text style={[styles.zukanRank, { color: getLevelColor(item.count) }]}>{getRankTitle(item.count)}</Text>
+                    <Text style={styles.zukanCount}>Lv.{item.count}</Text>
+                  </View>
                 </View>
               )}
               ListEmptyComponent={<Text style={styles.emptyText}>まだデータがありません</Text>}
@@ -642,8 +719,10 @@ const styles = StyleSheet.create({
   zukanItem: { flex: 1, margin: 5, backgroundColor: '#fff', borderRadius: 10, padding: 15, alignItems: 'center', elevation: 2 },
   zukanIcon: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   zukanIconText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  zukanName: { fontWeight: 'bold', fontSize: 14, textAlign: 'center', marginBottom: 5 },
-  zukanCount: { color: '#888', fontSize: 12 },
+  zukanName: { fontWeight: 'bold', fontSize: 13, textAlign: 'center', marginBottom: 5, height: 35 },
+  zukanBadgeContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  zukanRank: { fontSize: 10, fontWeight: 'bold', marginRight: 5 },
+  zukanCount: { color: '#555', fontSize: 12, fontWeight: 'bold' },
   closeButton: { padding: 5 },
   closeButtonText: { color: '#00adf5', fontWeight: 'bold' }
 });
