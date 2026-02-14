@@ -18,6 +18,9 @@ export interface ScraperData {
     details: string;
     startDate: string; // ISO format
     endDate: string;   // ISO format
+    type?: string;     // 'try' | 'mybasket' (optional)
+    salary?: number;   // optional pre-calculated salary
+    location?: string; // optional location
 }
 
 export type TutorShiftRaw = ScraperData; // Alias for compatibility if needed
@@ -150,12 +153,23 @@ export const parseTutorShifts = (rawData: ScraperData[]): Shift[] => {
             }
         }
 
+        // Determine type based on scraper data or details
+        let type: 'Tutor' | 'MyBasket' | 'Other' = 'Tutor';
+        if (item.type === 'mybasket') {
+            type = 'MyBasket';
+        } else if (item.type === 'try') {
+            type = 'Tutor';
+        }
+
+        // Use pre-calculated salary if available (for MyBasket)
+        const salary = item.salary !== undefined ? item.salary : parseTutorSalary(item.details);
+
         return {
             date: dateStr,
             title: title,
             description: item.details,
-            salary: parseTutorSalary(item.details),
-            type: 'Tutor',
+            salary: salary,
+            type: type,
             startTime: format(start, 'HH:mm'),
             endTime: format(end, 'HH:mm'),
         };
