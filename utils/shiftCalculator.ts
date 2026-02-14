@@ -169,6 +169,14 @@ export const generateMyBasketShifts = (year: number, month: number): Shift[] => 
     return shifts;
 };
 
+
+// Calculate total salary for a specific range
+export const calculateRangeTotal = (shifts: Shift[], startDate: string, endDate: string): number => {
+    return shifts
+        .filter(s => s.date >= startDate && s.date <= endDate)
+        .reduce((sum, s) => sum + s.salary, 0);
+};
+
 // Calculate total salary for a specific month
 export const calculateMonthlyTotal = (shifts: Shift[], year: number, month: number): number => {
     const targetPrefix = format(new Date(year, month - 1, 1), 'yyyy-MM');

@@ -5,7 +5,7 @@ import { Calendar, DateData } from 'react-native-calendars';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-import { Shift, ScraperData, parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage } from './utils/shiftCalculator';
+import { Shift, ScraperData, parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage, calculateRangeTotal } from './utils/shiftCalculator';
 import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts } from './utils/storage';
 // @ts-ignore
 import tutorDataRaw from './assets/shifts.json';
@@ -28,6 +28,11 @@ export default function App() {
   const [newShiftType, setNewShiftType] = useState<'Tutor' | 'MyBasket' | 'Other'>('Tutor');
   const [newHourlyWage, setNewHourlyWage] = useState('');
   const [selectedColor, setSelectedColor] = useState('#ff0000');
+  // Range Calculation State
+  const [rangeModalVisible, setRangeModalVisible] = useState(false);
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+  const [rangeTotal, setRangeTotal] = useState<number | null>(null);
 
   const COLORS = ['#ff0000', '#0000ff', '#008000', '#ffa500', '#800080'];
 
@@ -147,6 +152,15 @@ export default function App() {
     setNewShiftSalary('');
   };
 
+  const handleRangeCalculation = () => {
+    if (!rangeStart || !rangeEnd) {
+      setRangeTotal(null);
+      return;
+    }
+    const total = calculateRangeTotal(allShifts, rangeStart, rangeEnd);
+    setRangeTotal(total);
+  };
+
   const handleDeleteShift = async (indexInSelected: number, shiftToDelete: Shift) => {
     const doDelete = async () => {
       if (shiftToDelete.type === 'MyBasket') {
@@ -185,16 +199,14 @@ export default function App() {
   };
 
   const renderRightActions = (progress: any, dragX: any, index: number, item: Shift) => {
-    const scale = dragX.interpolate({
+    const trans = dragX.interpolate({
       inputRange: [-100, 0],
-      outputRange: [1, 0],
+      outputRange: [0, 0], // Static text
       extrapolate: 'clamp',
     });
     return (
       <TouchableOpacity onPress={() => handleDeleteShift(index, item)} style={styles.deleteAction}>
-        <Animated.View style={{ transform: [{ scale }] }}>
-          <Text style={styles.deleteActionText}>削除</Text>
-        </Animated.View>
+        <Text style={styles.deleteActionText}>削除</Text>
       </TouchableOpacity>
     );
   };
@@ -203,9 +215,19 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.monthText}>
-            {format(parseISO(currentMonth + '-01'), 'yyyy年M月', { locale: ja })} の給与予測
-          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+            <Text style={styles.monthText}>
+              {format(parseISO(currentMonth + '-01'), 'yyyy年M月', { locale: ja })} の給与予測
+            </Text>
+            <TouchableOpacity onPress={() => {
+              setRangeStart(format(new Date(), 'yyyy-MM-01'));
+              setRangeEnd(format(new Date(), 'yyyy-MM-dd'));
+              setRangeTotal(null);
+              setRangeModalVisible(true);
+            }} style={styles.rangeButton}>
+              <Text style={styles.rangeButtonText}>期間集計</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.totalAmount}>¥{monthlyTotal.toLocaleString()}</Text>
         </View>
 
@@ -241,6 +263,11 @@ export default function App() {
               <Swipeable
                 renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, index, item)}
                 overshootRight={false}
+                onSwipeableOpen={(direction) => {
+                  if (direction === 'right') {
+                    handleDeleteShift(index, item);
+                  }
+                }}
               >
                 <View style={[styles.card, { borderLeftColor: item.color || (item.type === 'Tutor' ? 'red' : 'blue') }]}>
                   <View style={styles.cardHeader}>
@@ -248,7 +275,7 @@ export default function App() {
                     <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
                   </View>
                   <Text style={styles.cardTime}>{item.startTime} - {item.endTime}</Text>
-                  <Text style={styles.hintText}>◀ スワイプで削除</Text>
+                  <Text style={styles.hintText}>◀ スライドアクション</Text>
                 </View>
               </Swipeable>
             )}
@@ -260,8 +287,6 @@ export default function App() {
         <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalView}>
-              <Text style={styles.modalTitle}>予定を追加 ({selectedDate})</Text>
-
               <Text style={styles.modalTitle}>予定を追加 ({selectedDate})</Text>
 
               {/* Type Selection */}
@@ -323,6 +348,32 @@ export default function App() {
             </View>
           </View>
         </Modal>
+
+        {/* Range Calculation Modal */}
+        <Modal animationType="fade" transparent={true} visible={rangeModalVisible} onRequestClose={() => setRangeModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalTitle}>期間集計</Text>
+              <Text style={styles.label}>開始日 (YYYY-MM-DD)</Text>
+              <TextInput style={styles.input} placeholder="2026-01-01" value={rangeStart} onChangeText={setRangeStart} />
+              <Text style={styles.label}>終了日 (YYYY-MM-DD)</Text>
+              <TextInput style={styles.input} placeholder="2026-01-31" value={rangeEnd} onChangeText={setRangeEnd} />
+
+              <Button title="計算する" onPress={handleRangeCalculation} />
+
+              {rangeTotal !== null && (
+                <View style={{ marginTop: 20, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16 }}>期間合計:</Text>
+                  <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#00adf5' }}>¥{rangeTotal.toLocaleString()}</Text>
+                </View>
+              )}
+
+              <View style={{ marginTop: 20 }}>
+                <Button title="閉じる" onPress={() => setRangeModalVisible(false)} color="gray" />
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -338,6 +389,8 @@ const styles = StyleSheet.create({
   listHeader: { fontSize: 18, fontWeight: '600', color: '#444' },
   addButton: { backgroundColor: '#00adf5', paddingHorizontal: 15, paddingVertical: 5, borderRadius: 20 },
   addButtonText: { color: '#fff', fontWeight: 'bold' },
+  rangeButton: { backgroundColor: '#FFA500', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15 },
+  rangeButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   card: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginBottom: 10, borderLeftWidth: 5, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
   cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
