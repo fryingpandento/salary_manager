@@ -508,7 +508,7 @@ export default function App() {
                       mode="time"
                       is24Hour={true}
                       onChange={onStartTimeChange}
-                      style={{ width: '100%', height: '100%', opacity: 1 }}
+                      style={{ width: 100, height: 40, opacity: 1, backgroundColor: 'transparent' }}
                     />
                   </View>
                 ) : (
@@ -524,7 +524,7 @@ export default function App() {
                       mode="time"
                       is24Hour={true}
                       onChange={onEndTimeChange}
-                      style={{ width: '100%', height: '100%', opacity: 1 }}
+                      style={{ width: 100, height: 40, opacity: 1, backgroundColor: 'transparent' }}
                     />
                   </View>
                 ) : (
@@ -573,7 +573,7 @@ export default function App() {
                     value={getDateObj(rangeStart)}
                     mode="date"
                     onChange={onRangeStartDateChange}
-                    style={{ width: '100%', height: '100%', opacity: 1 }}
+                    style={{ width: 200, height: 40, opacity: 1, backgroundColor: 'transparent' }}
                   />
                 </View>
               ) : (
@@ -588,7 +588,7 @@ export default function App() {
                     value={getDateObj(rangeEnd)}
                     mode="date"
                     onChange={onRangeEndDateChange}
-                    style={{ width: '100%', height: '100%', opacity: 1 }}
+                    style={{ width: 200, height: 40, opacity: 1, backgroundColor: 'transparent' }}
                   />
                 </View>
               ) : (
