@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Modal, TextInput, Alert, Button, Animated, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import { Calendar, DateData } from 'react-native-calendars';
 import { format, parseISO } from 'date-fns';
@@ -33,6 +34,12 @@ export default function App() {
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
   const [rangeTotal, setRangeTotal] = useState<number | null>(null);
+
+  // Picker Visibility State
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [showRangeStartDatePicker, setShowRangeStartDatePicker] = useState(false);
+  const [showRangeEndDatePicker, setShowRangeEndDatePicker] = useState(false);
 
 
 
@@ -230,6 +237,49 @@ export default function App() {
     setRangeTotal(total);
   };
 
+  // Date/Time Picker Handlers
+  const onStartTimeChange = (event: any, selectedDate?: Date) => {
+    setShowStartTimePicker(false);
+    if (selectedDate) {
+      setNewShiftStart(format(selectedDate, 'HH:mm'));
+    }
+  };
+
+  const onEndTimeChange = (event: any, selectedDate?: Date) => {
+    setShowEndTimePicker(false);
+    if (selectedDate) {
+      setNewShiftEnd(format(selectedDate, 'HH:mm'));
+    }
+  };
+
+  const onRangeStartDateChange = (event: any, selectedDate?: Date) => {
+    setShowRangeStartDatePicker(false);
+    if (selectedDate) {
+      setRangeStart(format(selectedDate, 'yyyy-MM-dd'));
+    }
+  };
+
+  const onRangeEndDateChange = (event: any, selectedDate?: Date) => {
+    setShowRangeEndDatePicker(false);
+    if (selectedDate) {
+      setRangeEnd(format(selectedDate, 'yyyy-MM-dd'));
+    }
+  };
+
+  // Helper to create Date object from time string (HH:mm)
+  const getTimeDate = (timeStr: string) => {
+    const d = new Date();
+    const [h, m] = timeStr.split(':').map(Number);
+    d.setHours(h || 0);
+    d.setMinutes(m || 0);
+    return d;
+  };
+
+  // Helper to create Date object from date string (YYYY-MM-DD)
+  const getDateObj = (dateStr: string) => {
+    return dateStr ? parseISO(dateStr) : new Date();
+  };
+
   const handleDeleteShift = async (indexInSelected: number, shiftToDelete: Shift) => {
     const doDelete = async () => {
       if (shiftToDelete.type === 'MyBasket') {
@@ -424,9 +474,32 @@ export default function App() {
               </View>
 
               <View style={styles.row}>
-                <TextInput style={[styles.input, { flex: 1, marginRight: 5 }]} placeholder="開始 (09:00)" value={newShiftStart} onChangeText={setNewShiftStart} />
-                <TextInput style={[styles.input, { flex: 1, marginLeft: 5 }]} placeholder="終了 (12:00)" value={newShiftEnd} onChangeText={setNewShiftEnd} />
+                <TouchableOpacity onPress={() => setShowStartTimePicker(true)} style={[styles.input, { flex: 1, marginRight: 5, justifyContent: 'center' }]}>
+                  <Text style={styles.inputText}>{newShiftStart || "開始"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowEndTimePicker(true)} style={[styles.input, { flex: 1, marginLeft: 5, justifyContent: 'center' }]}>
+                  <Text style={styles.inputText}>{newShiftEnd || "終了"}</Text>
+                </TouchableOpacity>
               </View>
+
+              {showStartTimePicker && (
+                <DateTimePicker
+                  value={getTimeDate(newShiftStart)}
+                  mode="time"
+                  is24Hour={true}
+                  display="default"
+                  onChange={onStartTimeChange}
+                />
+              )}
+              {showEndTimePicker && (
+                <DateTimePicker
+                  value={getTimeDate(newShiftEnd)}
+                  mode="time"
+                  is24Hour={true}
+                  display="default"
+                  onChange={onEndTimeChange}
+                />
+              )}
 
               <View style={styles.modalButtons}>
                 <Button title="キャンセル" onPress={() => setModalVisible(false)} color="gray" />
@@ -442,9 +515,30 @@ export default function App() {
             <View style={styles.modalView}>
               <Text style={styles.modalTitle}>期間集計</Text>
               <Text style={styles.label}>開始日 (YYYY-MM-DD)</Text>
-              <TextInput style={styles.input} placeholder="2026-01-01" value={rangeStart} onChangeText={setRangeStart} />
+              <TouchableOpacity onPress={() => setShowRangeStartDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
+                <Text style={styles.inputText}>{rangeStart || "タップして選択"}</Text>
+              </TouchableOpacity>
               <Text style={styles.label}>終了日 (YYYY-MM-DD)</Text>
-              <TextInput style={styles.input} placeholder="2026-01-31" value={rangeEnd} onChangeText={setRangeEnd} />
+              <TouchableOpacity onPress={() => setShowRangeEndDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
+                <Text style={styles.inputText}>{rangeEnd || "タップして選択"}</Text>
+              </TouchableOpacity>
+
+              {showRangeStartDatePicker && (
+                <DateTimePicker
+                  value={getDateObj(rangeStart)}
+                  mode="date"
+                  display="default"
+                  onChange={onRangeStartDateChange}
+                />
+              )}
+              {showRangeEndDatePicker && (
+                <DateTimePicker
+                  value={getDateObj(rangeEnd)}
+                  mode="date"
+                  display="default"
+                  onChange={onRangeEndDateChange}
+                />
+              )}
 
               <Button title="計算する" onPress={handleRangeCalculation} />
 
@@ -516,7 +610,8 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
   modalView: { width: '80%', backgroundColor: 'white', borderRadius: 20, padding: 20, alignItems: 'stretch', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
-  input: { height: 40, borderColor: '#ddd', borderWidth: 1, marginBottom: 15, paddingHorizontal: 10, borderRadius: 5 },
+  input: { height: 40, borderColor: '#ddd', borderWidth: 1, marginBottom: 15, paddingHorizontal: 10, borderRadius: 5, justifyContent: 'center' },
+  inputText: { fontSize: 16, color: '#333' },
   row: { flexDirection: 'row', marginBottom: 15 },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-around' },
   deleteButtonSmall: { backgroundColor: '#ffcccc', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
