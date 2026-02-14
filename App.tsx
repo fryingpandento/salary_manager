@@ -188,7 +188,6 @@ export default function App() {
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item, index }) => (
             <TouchableOpacity
-              onLongPress={() => handleDeleteShift(index, item)}
               activeOpacity={0.8}
             >
               <View style={[styles.card, { borderLeftColor: item.type === 'Tutor' ? 'red' : 'blue' }]}>
@@ -197,7 +196,9 @@ export default function App() {
                   <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
                 </View>
                 <Text style={styles.cardTime}>{item.startTime} - {item.endTime}</Text>
-                {item.type === 'Tutor' && <Text style={styles.hintText}>長押しで削除</Text>}
+                <TouchableOpacity onPress={() => handleDeleteShift(index, item)} style={styles.deleteButtonSmall}>
+                  <Text style={styles.deleteButtonText}>削除</Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           )}
@@ -251,5 +252,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
   input: { height: 40, borderColor: '#ddd', borderWidth: 1, marginBottom: 15, paddingHorizontal: 10, borderRadius: 5 },
   row: { flexDirection: 'row', marginBottom: 15 },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-around' }
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-around' },
+  deleteButtonSmall: { alignSelf: 'flex-end', backgroundColor: '#ffcccc', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginTop: 5 },
+  deleteButtonText: { color: '#ff3333', fontSize: 12, fontWeight: 'bold' }
 });
