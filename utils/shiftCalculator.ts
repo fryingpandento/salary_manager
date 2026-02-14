@@ -5,9 +5,11 @@ export interface Shift {
     title: string;
     description?: string;
     salary: number;
-    type: 'Tutor' | 'MyBasket';
+    type: 'Tutor' | 'MyBasket' | 'Other';
     startTime?: string;
     endTime?: string;
+    hourlyRate?: number;
+    color?: string;
 }
 
 // Matches the output of the schedule scraper
@@ -32,6 +34,78 @@ const parseTutorSalary = (description: string): number => {
     }
     return 0;
 };
+
+export const WAGE_MYBASKET_WEEKDAY_MORNING = 1330; // ~09:00
+export const WAGE_MYBASKET_WEEKDAY_DAY = 1240;     // 09:00~22:00
+export const WAGE_MYBASKET_WEEKDAY_NIGHT = 1555;   // 22:00~
+export const WAGE_MYBASKET_WEEKEND_OFFSET = 50;
+
+// Helper to convert "HH:mm" to minutes from midnight
+const timeToMinutes = (timeStr: string): number => {
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+};
+
+// Calculate wage for MyBasket based on time and date
+export const calculateMyBasketWage = (dateStr: string, startTime: string, endTime: string): number => {
+    const date = new Date(dateStr);
+    const isWeekend = isSaturday(date) || isSunday(date);
+    const offset = isWeekend ? WAGE_MYBASKET_WEEKEND_OFFSET : 0;
+
+    const startMin = timeToMinutes(startTime);
+    const endMin = timeToMinutes(endTime);
+
+    // Rates for time segments
+    const rateMorning = WAGE_MYBASKET_WEEKDAY_MORNING + offset;
+    const rateDay = WAGE_MYBASKET_WEEKDAY_DAY + offset;
+    const rateNight = WAGE_MYBASKET_WEEKDAY_NIGHT + offset;
+
+    let totalWage = 0;
+
+    // Iterate through minutes
+    // Optimization: Calculate overlap for each segment
+    // Segment 1: 0 - 540 (09:00)
+    const morningEnd = 540;
+    const dayEnd = 1320; // 22:00
+
+    // Morning overlap
+    if (startMin < morningEnd) {
+        const overlap = Math.min(endMin, morningEnd) - Math.max(startMin, 0);
+        if (overlap > 0) totalWage += (overlap / 60) * rateMorning;
+    }
+
+    // Day overlap
+    if (startMin < dayEnd && endMin > morningEnd) {
+        const overlap = Math.min(endMin, dayEnd) - Math.max(startMin, morningEnd);
+        if (overlap > 0) totalWage += (overlap / 60) * rateDay;
+    }
+
+    // Night overlap
+    if (endMin > dayEnd) {
+        const overlap = endMin - Math.max(startMin, dayEnd);
+        if (overlap > 0) totalWage += (overlap / 60) * rateNight;
+    }
+
+    return Math.floor(totalWage);
+};
+
+// Calculate wage for generic hourly rate
+export const calculateHourlyWage = (hourlyRate: number, startTime: string, endTime: string): number => {
+    const startMin = timeToMinutes(startTime);
+    const endMin = timeToMinutes(endTime);
+    const durationMin = endMin - startMin;
+    if (durationMin <= 0) return 0;
+    return Math.floor((durationMin / 60) * hourlyRate);
+};
+
+// ... (existing parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal implementations)
+// Note: generateMyBasketShifts relies on WAGE_MYBASKET_SAT constants which we might want to consolidate or keep for compatibility if used elsewhere.
+// But technically user wants DYNAMIC calculation now, so maybe generateMyBasketShifts should use the new function?
+// For now, I will keep old constants for generateMyBasketShifts unless user asks to change the *generation* logic. 
+// User asked to "add MyBasket as selectable", so this applies to manually added shifts.
+
+// ... (Rest of file content)
+
 
 // Convert raw JSON data (from scraper) to Shift objects
 export const parseTutorShifts = (rawData: ScraperData[]): Shift[] => {

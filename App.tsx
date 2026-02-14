@@ -5,7 +5,7 @@ import { Calendar, DateData } from 'react-native-calendars';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-import { Shift, ScraperData, parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal } from './utils/shiftCalculator';
+import { Shift, ScraperData, parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage } from './utils/shiftCalculator';
 import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts } from './utils/storage';
 // @ts-ignore
 import tutorDataRaw from './assets/shifts.json';
@@ -25,6 +25,30 @@ export default function App() {
   const [newShiftSalary, setNewShiftSalary] = useState('');
   const [newShiftStart, setNewShiftStart] = useState('09:00');
   const [newShiftEnd, setNewShiftEnd] = useState('12:00');
+  const [newShiftType, setNewShiftType] = useState<'Tutor' | 'MyBasket' | 'Other'>('Tutor');
+  const [newHourlyWage, setNewHourlyWage] = useState('');
+  const [selectedColor, setSelectedColor] = useState('#ff0000');
+
+  const COLORS = ['#ff0000', '#0000ff', '#008000', '#ffa500', '#800080'];
+
+  // Auto-calculate salary when inputs change
+  useEffect(() => {
+    if (newShiftType === 'MyBasket') {
+      const wage = calculateMyBasketWage(selectedDate, newShiftStart, newShiftEnd);
+      setNewShiftSalary(wage.toString());
+      setNewShiftTitle('まいばす');
+      setSelectedColor('#0000ff');
+    } else if (newShiftType === 'Other') {
+      const rate = parseInt(newHourlyWage, 10);
+      if (!isNaN(rate) && rate > 0) {
+        const wage = calculateHourlyWage(rate, newShiftStart, newShiftEnd);
+        setNewShiftSalary(wage.toString());
+      }
+      setSelectedColor('#008000'); // Default green for hourly
+    } else {
+      setSelectedColor('#ff0000'); // Default red for manual
+    }
+  }, [newShiftType, newShiftStart, newShiftEnd, newHourlyWage, selectedDate]);
 
   // Load initial data
   useEffect(() => {
@@ -74,7 +98,7 @@ export default function App() {
     const marks: any = {};
     allShifts.forEach(shift => {
       if (!marks[shift.date]) marks[shift.date] = { dots: [] };
-      const color = shift.type === 'Tutor' ? 'red' : 'blue';
+      const color = shift.color || (shift.type === 'Tutor' ? 'red' : 'blue');
       if (!marks[shift.date].dots.find((d: any) => d.color === color)) {
         marks[shift.date].dots.push({ color });
       }
@@ -106,10 +130,12 @@ export default function App() {
       date: selectedDate,
       title: newShiftTitle,
       salary: salaryNum,
-      type: 'Tutor', // Treat manual entries as Tutor type (editable)
+      type: newShiftType === 'Other' ? 'Tutor' : newShiftType, // "Other" treated as Tutor type for color/editing in this simple version, or map correctly if we update types
       startTime: newShiftStart,
       endTime: newShiftEnd,
-      description: '手動追加'
+      description: '手動追加',
+      hourlyRate: newShiftType === 'Other' ? parseInt(newHourlyWage) : undefined,
+      color: selectedColor
     };
 
     const updated = [...manualShifts, newShift];
@@ -216,18 +242,13 @@ export default function App() {
                 renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, index, item)}
                 overshootRight={false}
               >
-                <View style={[styles.card, { borderLeftColor: item.type === 'Tutor' ? 'red' : 'blue' }]}>
+                <View style={[styles.card, { borderLeftColor: item.color || (item.type === 'Tutor' ? 'red' : 'blue') }]}>
                   <View style={styles.cardHeader}>
                     <Text style={styles.cardTitle}>{item.title}</Text>
                     <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
                   </View>
                   <Text style={styles.cardTime}>{item.startTime} - {item.endTime}</Text>
-                  <View style={styles.cardActions}>
-                    <Text style={styles.hintText}>◀ スワイプで削除</Text>
-                    <TouchableOpacity onPress={() => handleDeleteShift(index, item)} style={styles.deleteButtonSmall}>
-                      <Text style={styles.deleteButtonText}>削除</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <Text style={styles.hintText}>◀ スワイプで削除</Text>
                 </View>
               </Swipeable>
             )}
@@ -241,8 +262,55 @@ export default function App() {
             <View style={styles.modalView}>
               <Text style={styles.modalTitle}>予定を追加 ({selectedDate})</Text>
 
-              <TextInput style={styles.input} placeholder="タイトル (例: 家庭教師)" value={newShiftTitle} onChangeText={setNewShiftTitle} />
-              <TextInput style={styles.input} placeholder="金額 (例: 4000)" value={newShiftSalary} onChangeText={setNewShiftSalary} keyboardType="numeric" />
+              <Text style={styles.modalTitle}>予定を追加 ({selectedDate})</Text>
+
+              {/* Type Selection */}
+              <View style={styles.typeSelector}>
+                <TouchableOpacity style={[styles.typeButton, newShiftType === 'Tutor' && styles.typeButtonSelected]} onPress={() => setNewShiftType('Tutor')}>
+                  <Text style={[styles.typeButtonText, newShiftType === 'Tutor' && styles.typeButtonTextSelected]}>手入力</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.typeButton, newShiftType === 'MyBasket' && styles.typeButtonSelected]} onPress={() => setNewShiftType('MyBasket')}>
+                  <Text style={[styles.typeButtonText, newShiftType === 'MyBasket' && styles.typeButtonTextSelected]}>まいばす</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.typeButton, newShiftType === 'Other' && styles.typeButtonSelected]} onPress={() => setNewShiftType('Other')}>
+                  <Text style={[styles.typeButtonText, newShiftType === 'Other' && styles.typeButtonTextSelected]}>時給計算</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Conditional Intervals */}
+              {newShiftType === 'Tutor' && (
+                <>
+                  <TextInput style={styles.input} placeholder="タイトル (例: 家庭教師)" value={newShiftTitle} onChangeText={setNewShiftTitle} />
+                  <TextInput style={styles.input} placeholder="金額 (例: 4000)" value={newShiftSalary} onChangeText={setNewShiftSalary} keyboardType="numeric" />
+                </>
+              )}
+
+              {newShiftType === 'MyBasket' && (
+                <>
+                  <Text style={styles.label}>タイトル: まいばす (固定)</Text>
+                  <Text style={styles.label}>金額: ¥{parseInt(newShiftSalary || '0').toLocaleString()} (自動計算)</Text>
+                </>
+              )}
+
+              {newShiftType === 'Other' && (
+                <>
+                  <TextInput style={styles.input} placeholder="タイトル (例: バイト)" value={newShiftTitle} onChangeText={setNewShiftTitle} />
+                  <TextInput style={styles.input} placeholder="時給 (例: 1200)" value={newHourlyWage} onChangeText={setNewHourlyWage} keyboardType="numeric" />
+                  <Text style={styles.label}>金額: ¥{parseInt(newShiftSalary || '0').toLocaleString()} (自動計算)</Text>
+                </>
+              )}
+
+              {/* Color Selection */}
+              <View style={styles.colorSelector}>
+                {COLORS.map(color => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[styles.colorButton, { backgroundColor: color }, selectedColor === color && styles.colorButtonSelected]}
+                    onPress={() => setSelectedColor(color)}
+                  />
+                ))}
+              </View>
+
               <View style={styles.row}>
                 <TextInput style={[styles.input, { flex: 1, marginRight: 5 }]} placeholder="開始 (09:00)" value={newShiftStart} onChangeText={setNewShiftStart} />
                 <TextInput style={[styles.input, { flex: 1, marginLeft: 5 }]} placeholder="終了 (12:00)" value={newShiftEnd} onChangeText={setNewShiftEnd} />
@@ -287,5 +355,14 @@ const styles = StyleSheet.create({
   deleteButtonText: { color: '#ff3333', fontSize: 12, fontWeight: 'bold' },
   deleteAction: { backgroundColor: '#dd2c00', justifyContent: 'center', alignItems: 'flex-end', marginBottom: 10, marginTop: 0, borderRadius: 0, width: 80, height: '100%' },
   deleteActionText: { color: 'white', fontWeight: 'bold', padding: 20 },
-  cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }
+  cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 },
+  typeSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 15 },
+  typeButton: { paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#00adf5', borderRadius: 20, marginHorizontal: 5 },
+  typeButtonSelected: { backgroundColor: '#00adf5' },
+  typeButtonText: { color: '#00adf5', fontWeight: 'bold' },
+  typeButtonTextSelected: { color: '#fff' },
+  label: { marginBottom: 10, fontSize: 16, fontWeight: 'bold', color: '#555' },
+  colorSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 15 },
+  colorButton: { width: 30, height: 30, borderRadius: 15, marginHorizontal: 5, borderWidth: 2, borderColor: 'transparent' },
+  colorButtonSelected: { borderColor: '#333', transform: [{ scale: 1.2 }] }
 });
