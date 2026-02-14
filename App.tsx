@@ -503,13 +503,13 @@ export default function App() {
               <View style={styles.row}>
                 {Platform.OS === 'web' ? (
                   <View style={[styles.input, { flex: 1, marginRight: 5, justifyContent: 'center' }]}>
-                    <DateTimePicker
-                      value={getTimeDate(newShiftStart)}
-                      mode="time"
-                      is24Hour={true}
-                      onChange={onStartTimeChange}
-                      style={{ width: 100, height: 40, opacity: 1, backgroundColor: 'transparent' }}
-                    />
+                    {/* @ts-ignore */}
+                    {React.createElement('input', {
+                      type: 'time',
+                      value: newShiftStart,
+                      onChange: (e: any) => setNewShiftStart(e.target.value),
+                      style: { width: '100%', height: '100%', fontSize: 16, border: 'none', background: 'transparent' }
+                    })}
                   </View>
                 ) : (
                   <TouchableOpacity onPress={() => setShowStartTimePicker(true)} style={[styles.input, { flex: 1, marginRight: 5, justifyContent: 'center' }]}>
@@ -519,13 +519,13 @@ export default function App() {
 
                 {Platform.OS === 'web' ? (
                   <View style={[styles.input, { flex: 1, marginLeft: 5, justifyContent: 'center' }]}>
-                    <DateTimePicker
-                      value={getTimeDate(newShiftEnd)}
-                      mode="time"
-                      is24Hour={true}
-                      onChange={onEndTimeChange}
-                      style={{ width: 100, height: 40, opacity: 1, backgroundColor: 'transparent' }}
-                    />
+                    {/* @ts-ignore */}
+                    {React.createElement('input', {
+                      type: 'time',
+                      value: newShiftEnd,
+                      onChange: (e: any) => setNewShiftEnd(e.target.value),
+                      style: { width: '100%', height: '100%', fontSize: 16, border: 'none', background: 'transparent' }
+                    })}
                   </View>
                 ) : (
                   <TouchableOpacity onPress={() => setShowEndTimePicker(true)} style={[styles.input, { flex: 1, marginLeft: 5, justifyContent: 'center' }]}>
@@ -569,12 +569,13 @@ export default function App() {
               <Text style={styles.label}>開始日 (YYYY-MM-DD)</Text>
               {Platform.OS === 'web' ? (
                 <View style={[styles.input, { justifyContent: 'center' }]}>
-                  <DateTimePicker
-                    value={getDateObj(rangeStart)}
-                    mode="date"
-                    onChange={onRangeStartDateChange}
-                    style={{ width: 200, height: 40, opacity: 1, backgroundColor: 'transparent' }}
-                  />
+                  {/* @ts-ignore */}
+                  {React.createElement('input', {
+                    type: 'date',
+                    value: rangeStart,
+                    onChange: (e: any) => setRangeStart(e.target.value),
+                    style: { width: '100%', height: '100%', fontSize: 16, border: 'none', background: 'transparent' }
+                  })}
                 </View>
               ) : (
                 <TouchableOpacity onPress={() => setShowRangeStartDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
@@ -584,12 +585,13 @@ export default function App() {
               <Text style={styles.label}>終了日 (YYYY-MM-DD)</Text>
               {Platform.OS === 'web' ? (
                 <View style={[styles.input, { justifyContent: 'center' }]}>
-                  <DateTimePicker
-                    value={getDateObj(rangeEnd)}
-                    mode="date"
-                    onChange={onRangeEndDateChange}
-                    style={{ width: 200, height: 40, opacity: 1, backgroundColor: 'transparent' }}
-                  />
+                  {/* @ts-ignore */}
+                  {React.createElement('input', {
+                    type: 'date',
+                    value: rangeEnd,
+                    onChange: (e: any) => setRangeEnd(e.target.value),
+                    style: { width: '100%', height: '100%', fontSize: 16, border: 'none', background: 'transparent' }
+                  })}
                 </View>
               ) : (
                 <TouchableOpacity onPress={() => setShowRangeEndDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
