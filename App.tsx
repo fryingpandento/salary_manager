@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Modal, TextInput, Alert, Button, Animated } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Modal, TextInput, Alert, Button, Animated, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Calendar, DateData } from 'react-native-calendars';
@@ -123,32 +123,40 @@ export default function App() {
   };
 
   const handleDeleteShift = async (indexInSelected: number, shiftToDelete: Shift) => {
-    Alert.alert('削除確認', 'この予定を削除しますか？', [
-      { text: 'キャンセル', style: 'cancel' },
-      {
-        text: '削除',
-        style: 'destructive',
-        onPress: async () => {
-          if (shiftToDelete.type === 'MyBasket') {
-            // MyBasket: Exclude by Date
-            const updatedExclusions = [...excludedDates, shiftToDelete.date];
-            setExcludedDates(updatedExclusions);
-            await saveExcludedDates(updatedExclusions);
-          } else if (shiftToDelete.description === '手動追加') {
-            // Manual: Remove from manualShifts
-            const updated = manualShifts.filter(s => s !== shiftToDelete);
-            setManualShifts(updated);
-            await saveManualShifts(updated);
-          } else {
-            // Scraper: Exclude by ID
-            const id = getShiftId(shiftToDelete);
-            const updated = [...excludedTutorShifts, id];
-            setExcludedTutorShifts(updated);
-            await saveExcludedTutorShifts(updated);
-          }
-        }
+    const doDelete = async () => {
+      if (shiftToDelete.type === 'MyBasket') {
+        // MyBasket: Exclude by Date
+        const updatedExclusions = [...excludedDates, shiftToDelete.date];
+        setExcludedDates(updatedExclusions);
+        await saveExcludedDates(updatedExclusions);
+      } else if (shiftToDelete.description === '手動追加') {
+        // Manual: Remove from manualShifts
+        const updated = manualShifts.filter(s => s !== shiftToDelete);
+        setManualShifts(updated);
+        await saveManualShifts(updated);
+      } else {
+        // Scraper: Exclude by ID
+        const id = getShiftId(shiftToDelete);
+        const updated = [...excludedTutorShifts, id];
+        setExcludedTutorShifts(updated);
+        await saveExcludedTutorShifts(updated);
       }
-    ]);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('この予定を削除しますか？')) {
+        await doDelete();
+      }
+    } else {
+      Alert.alert('削除確認', 'この予定を削除しますか？', [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: doDelete
+        }
+      ]);
+    }
   };
 
   const renderRightActions = (progress: any, dragX: any, index: number, item: Shift) => {
