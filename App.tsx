@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Modal, TextInput, Alert, Button, Animated, Platform } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import { Calendar, DateData } from 'react-native-calendars';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
