@@ -22,6 +22,12 @@ export interface ScraperData {
 
 export type TutorShiftRaw = ScraperData; // Alias for compatibility if needed
 
+export interface LocationStats {
+    name: string;
+    count: number;
+    lastVisited: string;
+}
+
 const WAGE_MYBASKET_SAT = 1240;
 const WAGE_MYBASKET_SUN = 1290;
 const HOURS_MYBASKET = 4;
@@ -96,6 +102,25 @@ export const calculateHourlyWage = (hourlyRate: number, startTime: string, endTi
     const durationMin = endMin - startMin;
     if (durationMin <= 0) return 0;
     return Math.floor((durationMin / 60) * hourlyRate);
+};
+
+// Helper to extract clean location name from details or title
+// Format: "R7年度_中央ふれあい館（埼玉県_川口市）（駐車場なし）" -> "中央ふれあい館"
+export const extractLocationName = (description: string | undefined): string => {
+    if (!description) return '不明';
+
+    // Check for "勤務地：" pattern in details
+    const match = description.match(/勤務地：(.*?)(?:\s|\/|$)/);
+    let rawLocation = match ? match[1] : description;
+
+    // Clean up
+    // 1. Remove "R\d+年度_" prefix
+    rawLocation = rawLocation.replace(/R\d+年度_/, '');
+    // 2. Remove particular suffixes like (埼玉県_川口市), (駐車場なし)
+    // We remove any string enclosed in full-width parenthesis （...）
+    rawLocation = rawLocation.replace(/（.*?）/g, '');
+
+    return rawLocation.trim();
 };
 
 // ... (existing parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal implementations)
@@ -182,5 +207,14 @@ export const calculateMonthlyTotal = (shifts: Shift[], year: number, month: numb
     const targetPrefix = format(new Date(year, month - 1, 1), 'yyyy-MM');
     return shifts
         .filter(s => s.date.startsWith(targetPrefix))
+        .reduce((sum, s) => sum + s.salary, 0);
+};
+
+// Calculate annual total salary for 1.03M wall
+export const calculateAnnualTotal = (shifts: Shift[], year: number): number => {
+    const start = `${year}-01-01`;
+    const end = `${year}-12-31`;
+    return shifts
+        .filter(s => s.date >= start && s.date <= end)
         .reduce((sum, s) => sum + s.salary, 0);
 };

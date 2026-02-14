@@ -5,8 +5,8 @@ import { Calendar, DateData } from 'react-native-calendars';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-import { Shift, ScraperData, parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage, calculateRangeTotal } from './utils/shiftCalculator';
-import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts } from './utils/storage';
+import { Shift, ScraperData, parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage, calculateRangeTotal, calculateAnnualTotal, extractLocationName, LocationStats } from './utils/shiftCalculator';
+import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts, loadDiscoveredLocations, saveDiscoveredLocations } from './utils/storage';
 // @ts-ignore
 import tutorDataRaw from './assets/shifts.json';
 
@@ -33,6 +33,16 @@ export default function App() {
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
   const [rangeTotal, setRangeTotal] = useState<number | null>(null);
+
+
+
+  // 1.03M Wall State
+  const [annualTotal, setAnnualTotal] = useState(0);
+  const WALL_LIMIT = 1030000;
+
+  // Baito Zukan State
+  const [zukanModalVisible, setZukanModalVisible] = useState(false);
+  const [discoveredLocations, setDiscoveredLocations] = useState<LocationStats[]>([]);
 
   const COLORS = ['#ff0000', '#0000ff', '#008000', '#ffa500', '#800080'];
 
@@ -61,9 +71,11 @@ export default function App() {
       const shifts = await loadManualShifts();
       const exclusions = await loadExcludedDates();
       const tutorExclusions = await loadExcludedTutorShifts();
+      const locations = await loadDiscoveredLocations();
       setManualShifts(shifts);
       setExcludedDates(exclusions);
       setExcludedTutorShifts(tutorExclusions);
+      setDiscoveredLocations(locations);
     };
     loadData();
   }, []);
@@ -90,7 +102,64 @@ export default function App() {
     // Combine all
     const combined = [...scraperShifts, ...manualShifts, ...generated];
     setAllShifts(combined);
-  }, [currentMonth, manualShifts, excludedDates, excludedTutorShifts]);
+
+
+    // Calculate Annual Total
+    const currentYear = new Date().getFullYear();
+    setAnnualTotal(calculateAnnualTotal(combined, currentYear));
+
+    // Update Baito Zukan Logic
+    const updateLocations = async () => {
+      let stats = [...discoveredLocations];
+      let changed = false;
+
+      combined.forEach(shift => {
+        // Determine location name
+        let locName = 'その他';
+        if (shift.type === 'MyBasket') {
+          locName = 'まいばすけっと';
+        } else if (shift.type === 'Tutor') {
+          locName = extractLocationName(shift.description || shift.title);
+        } else {
+          locName = shift.title; // For 'Other' types
+        }
+
+        if (!locName || locName === '不明') return;
+
+        const existingIndex = stats.findIndex(l => l.name === locName);
+        if (existingIndex >= 0) {
+          // Already discovered, maybe update count logic could go here if we want to track *all* history from scratch every time
+          // For now, we just ensure it exists. 
+          // Simple Count Logic: Recalculate counts from *current* allShifts to be accurate?
+          // Or just add new ones? 
+          // Let's recalculate all counts based on current loaded shifts to be safe and simple.
+        } else {
+          stats.push({ name: locName, count: 0, lastVisited: shift.date });
+          changed = true;
+        }
+      });
+
+      // Recalculate counts
+      stats = stats.map(loc => {
+        const count = combined.filter(s => {
+          if (loc.name === 'まいばすけっと') return s.type === 'MyBasket';
+          const sName = s.type === 'Tutor' ? extractLocationName(s.description || s.title) : s.title;
+          return sName === loc.name;
+        }).length;
+        return { ...loc, count, lastVisited: loc.lastVisited }; // Update count
+      });
+
+      // Save if meaningful change or if we just want to keep sync
+      // To avoid infinite loops or heavy path, maybe only save if deep diff?
+      // For this size, saving is fine.
+      if (JSON.stringify(stats) !== JSON.stringify(discoveredLocations)) {
+        setDiscoveredLocations(stats);
+        saveDiscoveredLocations(stats);
+      }
+    };
+    updateLocations();
+
+  }, [currentMonth, manualShifts, excludedDates, excludedTutorShifts]); // Only re-run when source data changes
 
   // Calculate Monthly Total
   const monthlyTotal = useMemo(() => {
@@ -227,8 +296,26 @@ export default function App() {
             }} style={styles.rangeButton}>
               <Text style={styles.rangeButtonText}>期間集計</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => setZukanModalVisible(true)} style={styles.zukanButton}>
+              <Text style={styles.zukanButtonText}>図鑑</Text>
+            </TouchableOpacity>
           </View>
           <Text style={styles.totalAmount}>¥{monthlyTotal.toLocaleString()}</Text>
+
+          {/* Wall Meter */}
+          <View style={styles.wallContainer}>
+            <View style={styles.wallHeader}>
+              <Text style={styles.wallTitle}>103万の壁</Text>
+              <Text style={styles.wallRemaining}>あと ¥{(WALL_LIMIT - annualTotal).toLocaleString()}</Text>
+            </View>
+            <View style={styles.progressBarBackground}>
+              <View style={[styles.progressBarFill, {
+                width: `${Math.min((annualTotal / WALL_LIMIT) * 100, 100)}%`,
+                backgroundColor: (annualTotal / WALL_LIMIT) > 0.95 ? '#ff4444' : (annualTotal / WALL_LIMIT) > 0.8 ? '#ffbb33' : '#00C851'
+              }]} />
+            </View>
+            <Text style={styles.wallPercent}>{((annualTotal / WALL_LIMIT) * 100).toFixed(1)}% 消化 (¥{annualTotal.toLocaleString()})</Text>
+          </View>
         </View>
 
         <Calendar
@@ -374,6 +461,34 @@ export default function App() {
             </View>
           </View>
         </Modal>
+
+        {/* Baito Zukan Modal */}
+        <Modal animationType="slide" transparent={false} visible={zukanModalVisible} onRequestClose={() => setZukanModalVisible(false)}>
+          <SafeAreaView style={styles.container}>
+            <View style={styles.header}>
+              <Text style={styles.modalTitle}>バイト図鑑 (勤務地コレクション)</Text>
+              <TouchableOpacity onPress={() => setZukanModalVisible(false)} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>閉じる</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={discoveredLocations}
+              keyExtractor={(item) => item.name}
+              numColumns={2}
+              contentContainerStyle={{ padding: 10 }}
+              renderItem={({ item }) => (
+                <View style={styles.zukanItem}>
+                  <View style={[styles.zukanIcon, { backgroundColor: item.count > 0 ? '#00adf5' : '#ccc' }]}>
+                    <Text style={styles.zukanIconText}>{item.name.substring(0, 1)}</Text>
+                  </View>
+                  <Text style={styles.zukanName}>{item.name}</Text>
+                  <Text style={styles.zukanCount}>Lv.{item.count}</Text>
+                </View>
+              )}
+              ListEmptyComponent={<Text style={styles.emptyText}>まだデータがありません</Text>}
+            />
+          </SafeAreaView>
+        </Modal>
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -417,5 +532,23 @@ const styles = StyleSheet.create({
   label: { marginBottom: 10, fontSize: 16, fontWeight: 'bold', color: '#555' },
   colorSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 15 },
   colorButton: { width: 30, height: 30, borderRadius: 15, marginHorizontal: 5, borderWidth: 2, borderColor: 'transparent' },
-  colorButtonSelected: { borderColor: '#333', transform: [{ scale: 1.2 }] }
+  colorButtonSelected: { borderColor: '#333', transform: [{ scale: 1.2 }] },
+  // Wall Meter Styles
+  wallContainer: { width: '100%', marginTop: 15, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8 },
+  wallHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  wallTitle: { fontWeight: 'bold', color: '#555' },
+  wallRemaining: { fontWeight: 'bold', color: '#555' },
+  progressBarBackground: { height: 10, backgroundColor: '#e0e0e0', borderRadius: 5, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 5 },
+  wallPercent: { textAlign: 'center', fontSize: 12, color: '#777', marginTop: 3 },
+  // Zukan Styles
+  zukanButton: { backgroundColor: '#9C27B0', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15, marginLeft: 5 },
+  zukanButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  zukanItem: { flex: 1, margin: 5, backgroundColor: '#fff', borderRadius: 10, padding: 15, alignItems: 'center', elevation: 2 },
+  zukanIcon: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  zukanIconText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
+  zukanName: { fontWeight: 'bold', fontSize: 14, textAlign: 'center', marginBottom: 5 },
+  zukanCount: { color: '#888', fontSize: 12 },
+  closeButton: { padding: 5 },
+  closeButtonText: { color: '#00adf5', fontWeight: 'bold' }
 });

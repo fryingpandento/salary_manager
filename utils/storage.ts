@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Shift, ScraperData, parseTutorShifts } from './shiftCalculator';
+import { Shift, ScraperData, parseTutorShifts, LocationStats } from './shiftCalculator';
 // @ts-ignore
 import tutorDataRaw from '../assets/shifts.json';
 
@@ -68,5 +68,25 @@ export const saveExcludedTutorShifts = async (ids: string[]): Promise<void> => {
         await AsyncStorage.setItem(TUTOR_EXCLUSION_KEY, jsonValue);
     } catch (e) {
         console.error('Failed to save tutor exclusions', e);
+    }
+};
+const LOCATIONS_KEY = '@salary_manager_locations';
+
+export const loadDiscoveredLocations = async (): Promise<LocationStats[]> => {
+    try {
+        const jsonValue = await AsyncStorage.getItem(LOCATIONS_KEY);
+        return jsonValue != null ? JSON.parse(jsonValue) : [];
+    } catch (e) {
+        console.error('Failed to load locations', e);
+        return [];
+    }
+};
+
+export const saveDiscoveredLocations = async (locations: LocationStats[]): Promise<void> => {
+    try {
+        const jsonValue = JSON.stringify(locations);
+        await AsyncStorage.setItem(LOCATIONS_KEY, jsonValue);
+    } catch (e) {
+        console.error('Failed to save locations', e);
     }
 };
