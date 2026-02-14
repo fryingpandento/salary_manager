@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Modal, TextInput, Alert, Button } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Modal, TextInput, Alert, Button, Animated } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Calendar, DateData } from 'react-native-calendars';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -149,84 +151,100 @@ export default function App() {
     ]);
   };
 
+  const renderRightActions = (progress: any, dragX: any, index: number, item: Shift) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+    return (
+      <TouchableOpacity onPress={() => handleDeleteShift(index, item)} style={styles.deleteAction}>
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Text style={styles.deleteActionText}>削除</Text>
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.monthText}>
-          {format(parseISO(currentMonth + '-01'), 'yyyy年M月', { locale: ja })} の給与予測
-        </Text>
-        <Text style={styles.totalAmount}>¥{monthlyTotal.toLocaleString()}</Text>
-      </View>
-
-      <Calendar
-        current={selectedDate}
-        onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
-        onMonthChange={(month: DateData) => setCurrentMonth(month.dateString.substring(0, 7))}
-        markingType={'multi-dot'}
-        markedDates={markedDates}
-        theme={{
-          todayTextColor: '#00adf5',
-          selectedDayBackgroundColor: '#00adf5',
-          arrowColor: '#00adf5',
-          monthTextColor: '#333',
-          textMonthFontWeight: 'bold',
-        }}
-      />
-
-      <View style={styles.listContainer}>
-        <View style={styles.listHeaderContainer}>
-          <Text style={styles.listHeader}>
-            {format(parseISO(selectedDate), 'M月d日 (E)', { locale: ja })} の予定
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.monthText}>
+            {format(parseISO(currentMonth + '-01'), 'yyyy年M月', { locale: ja })} の給与予測
           </Text>
-          <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButton}>
-            <Text style={styles.addButtonText}>＋ 追加</Text>
-          </TouchableOpacity>
+          <Text style={styles.totalAmount}>¥{monthlyTotal.toLocaleString()}</Text>
         </View>
 
-        <FlatList
-          data={selectedShifts}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={({ item, index }) => (
-            <TouchableOpacity
-              activeOpacity={0.8}
-            >
-              <View style={[styles.card, { borderLeftColor: item.type === 'Tutor' ? 'red' : 'blue' }]}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
-                </View>
-                <Text style={styles.cardTime}>{item.startTime} - {item.endTime}</Text>
-                <TouchableOpacity onPress={() => handleDeleteShift(index, item)} style={styles.deleteButtonSmall}>
-                  <Text style={styles.deleteButtonText}>削除</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          )}
-          ListEmptyComponent={<Text style={styles.emptyText}>予定はありません</Text>}
+        <Calendar
+          current={selectedDate}
+          onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
+          onMonthChange={(month: DateData) => setCurrentMonth(month.dateString.substring(0, 7))}
+          markingType={'multi-dot'}
+          markedDates={markedDates}
+          theme={{
+            todayTextColor: '#00adf5',
+            selectedDayBackgroundColor: '#00adf5',
+            arrowColor: '#00adf5',
+            monthTextColor: '#333',
+            textMonthFontWeight: 'bold',
+          }}
         />
-      </View>
 
-      {/* Add Shift Modal */}
-      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>予定を追加 ({selectedDate})</Text>
+        <View style={styles.listContainer}>
+          <View style={styles.listHeaderContainer}>
+            <Text style={styles.listHeader}>
+              {format(parseISO(selectedDate), 'M月d日 (E)', { locale: ja })} の予定
+            </Text>
+            <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButton}>
+              <Text style={styles.addButtonText}>＋ 追加</Text>
+            </TouchableOpacity>
+          </View>
 
-            <TextInput style={styles.input} placeholder="タイトル (例: 家庭教師)" value={newShiftTitle} onChangeText={setNewShiftTitle} />
-            <TextInput style={styles.input} placeholder="金額 (例: 4000)" value={newShiftSalary} onChangeText={setNewShiftSalary} keyboardType="numeric" />
-            <View style={styles.row}>
-              <TextInput style={[styles.input, { flex: 1, marginRight: 5 }]} placeholder="開始 (09:00)" value={newShiftStart} onChangeText={setNewShiftStart} />
-              <TextInput style={[styles.input, { flex: 1, marginLeft: 5 }]} placeholder="終了 (12:00)" value={newShiftEnd} onChangeText={setNewShiftEnd} />
-            </View>
+          <FlatList
+            data={selectedShifts}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item, index }) => (
+              <Swipeable
+                renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, index, item)}
+                overshootRight={false}
+              >
+                <View style={[styles.card, { borderLeftColor: item.type === 'Tutor' ? 'red' : 'blue' }]}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
+                  </View>
+                  <Text style={styles.cardTime}>{item.startTime} - {item.endTime}</Text>
+                  <Text style={styles.hintText}>◀ スワイプで削除</Text>
+                </View>
+              </Swipeable>
+            )}
+            ListEmptyComponent={<Text style={styles.emptyText}>予定はありません</Text>}
+          />
+        </View>
 
-            <View style={styles.modalButtons}>
-              <Button title="キャンセル" onPress={() => setModalVisible(false)} color="gray" />
-              <Button title="追加" onPress={handleAddShift} />
+        {/* Add Shift Modal */}
+        <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalTitle}>予定を追加 ({selectedDate})</Text>
+
+              <TextInput style={styles.input} placeholder="タイトル (例: 家庭教師)" value={newShiftTitle} onChangeText={setNewShiftTitle} />
+              <TextInput style={styles.input} placeholder="金額 (例: 4000)" value={newShiftSalary} onChangeText={setNewShiftSalary} keyboardType="numeric" />
+              <View style={styles.row}>
+                <TextInput style={[styles.input, { flex: 1, marginRight: 5 }]} placeholder="開始 (09:00)" value={newShiftStart} onChangeText={setNewShiftStart} />
+                <TextInput style={[styles.input, { flex: 1, marginLeft: 5 }]} placeholder="終了 (12:00)" value={newShiftEnd} onChangeText={setNewShiftEnd} />
+              </View>
+
+              <View style={styles.modalButtons}>
+                <Button title="キャンセル" onPress={() => setModalVisible(false)} color="gray" />
+                <Button title="追加" onPress={handleAddShift} />
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -254,5 +272,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', marginBottom: 15 },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-around' },
   deleteButtonSmall: { alignSelf: 'flex-end', backgroundColor: '#ffcccc', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginTop: 5 },
-  deleteButtonText: { color: '#ff3333', fontSize: 12, fontWeight: 'bold' }
+  deleteButtonText: { color: '#ff3333', fontSize: 12, fontWeight: 'bold' },
+  deleteAction: { backgroundColor: '#dd2c00', justifyContent: 'center', alignItems: 'flex-end', marginBottom: 10, marginTop: 0, borderRadius: 0, width: 80, height: '100%' },
+  deleteActionText: { color: 'white', fontWeight: 'bold', padding: 20 },
 });
