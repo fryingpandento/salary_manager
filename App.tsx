@@ -5,7 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 import { Shift, ScraperData, parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal } from './utils/shiftCalculator';
-import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates } from './utils/storage';
+import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts } from './utils/storage';
 // @ts-ignore
 import tutorDataRaw from './assets/shifts.json';
 
@@ -15,6 +15,7 @@ export default function App() {
 
   const [manualShifts, setManualShifts] = useState<Shift[]>([]);
   const [excludedDates, setExcludedDates] = useState<string[]>([]);
+  const [excludedTutorShifts, setExcludedTutorShifts] = useState<string[]>([]); // New state for Tutor exclusions
   const [allShifts, setAllShifts] = useState<Shift[]>([]);
 
   // Modal State
@@ -29,16 +30,22 @@ export default function App() {
     const loadData = async () => {
       const shifts = await loadManualShifts();
       const exclusions = await loadExcludedDates();
+      const tutorExclusions = await loadExcludedTutorShifts();
       setManualShifts(shifts);
       setExcludedDates(exclusions);
+      setExcludedTutorShifts(tutorExclusions);
     };
     loadData();
   }, []);
 
+  // Helper to generate unique ID for exclusion
+  const getShiftId = (s: Shift) => `${s.date}_${s.startTime}_${s.endTime}_${s.title}`;
+
   // Combine shifts
   useEffect(() => {
     // 1. Scraper Shifts (Always fresh from JSON)
-    const scraperShifts = parseTutorShifts(tutorDataRaw as ScraperData[]);
+    const scraperShifts = parseTutorShifts(tutorDataRaw as ScraperData[])
+      .filter(s => !excludedTutorShifts.includes(getShiftId(s)));
 
     // 2. MyBasket Shifts (Generate for current month +/- 1 month)
     const [year, month] = currentMonth.split('-').map(Number);
@@ -53,7 +60,7 @@ export default function App() {
     // Combine all
     const combined = [...scraperShifts, ...manualShifts, ...generated];
     setAllShifts(combined);
-  }, [currentMonth, manualShifts, excludedDates]);
+  }, [currentMonth, manualShifts, excludedDates, excludedTutorShifts]);
 
   // Calculate Monthly Total
   const monthlyTotal = useMemo(() => {
@@ -131,8 +138,11 @@ export default function App() {
             setManualShifts(updated);
             await saveManualShifts(updated);
           } else {
-            // Scraper: Alert user
-            Alert.alert('注意', 'トライ（自動連携）のデータはアプリ内では削除できません。');
+            // Scraper: Exclude by ID
+            const id = getShiftId(shiftToDelete);
+            const updated = [...excludedTutorShifts, id];
+            setExcludedTutorShifts(updated);
+            await saveExcludedTutorShifts(updated);
           }
         }
       }

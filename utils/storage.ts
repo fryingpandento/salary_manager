@@ -47,3 +47,26 @@ export const saveExcludedDates = async (dates: string[]): Promise<void> => {
         console.error('Failed to save exclusions', e);
     }
 };
+
+const TUTOR_EXCLUSION_KEY = '@salary_manager_tutor_exclusions';
+
+// Load excluded tutor shifts (Full ID strings)
+export const loadExcludedTutorShifts = async (): Promise<string[]> => {
+    try {
+        const jsonValue = await AsyncStorage.getItem(TUTOR_EXCLUSION_KEY);
+        return jsonValue != null ? JSON.parse(jsonValue) : [];
+    } catch (e) {
+        console.error('Failed to load tutor exclusions', e);
+        return [];
+    }
+};
+
+// Save excluded tutor shifts
+export const saveExcludedTutorShifts = async (ids: string[]): Promise<void> => {
+    try {
+        const jsonValue = JSON.stringify(ids);
+        await AsyncStorage.setItem(TUTOR_EXCLUSION_KEY, jsonValue);
+    } catch (e) {
+        console.error('Failed to save tutor exclusions', e);
+    }
+};
