@@ -223,7 +223,12 @@ export default function App() {
                     <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
                   </View>
                   <Text style={styles.cardTime}>{item.startTime} - {item.endTime}</Text>
-                  <Text style={styles.hintText}>◀ スワイプで削除</Text>
+                  <View style={styles.cardActions}>
+                    <Text style={styles.hintText}>◀ スワイプで削除</Text>
+                    <TouchableOpacity onPress={() => handleDeleteShift(index, item)} style={styles.deleteButtonSmall}>
+                      <Text style={styles.deleteButtonText}>削除</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </Swipeable>
             )}
@@ -279,8 +284,9 @@ const styles = StyleSheet.create({
   input: { height: 40, borderColor: '#ddd', borderWidth: 1, marginBottom: 15, paddingHorizontal: 10, borderRadius: 5 },
   row: { flexDirection: 'row', marginBottom: 15 },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-around' },
-  deleteButtonSmall: { alignSelf: 'flex-end', backgroundColor: '#ffcccc', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginTop: 5 },
+  deleteButtonSmall: { backgroundColor: '#ffcccc', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   deleteButtonText: { color: '#ff3333', fontSize: 12, fontWeight: 'bold' },
   deleteAction: { backgroundColor: '#dd2c00', justifyContent: 'center', alignItems: 'flex-end', marginBottom: 10, marginTop: 0, borderRadius: 0, width: 80, height: '100%' },
   deleteActionText: { color: 'white', fontWeight: 'bold', padding: 20 },
+  cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 }
 });
