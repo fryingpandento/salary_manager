@@ -297,51 +297,43 @@ export default function App() {
     return dateStr ? parseISO(dateStr) : new Date();
   };
 
-  const handleDeleteShift = async (indexInSelected: number, shiftToDelete: Shift) => {
-    const doDelete = async () => {
-      if (shiftToDelete.type === 'MyBasket') {
-        // MyBasket: Exclude by Date
-        const updatedExclusions = [...excludedDates, shiftToDelete.date];
-        setExcludedDates(updatedExclusions);
-        await saveExcludedDates(updatedExclusions);
-      } else if (shiftToDelete.description === '手動追加') {
-        // Manual: Remove from manualShifts
-        const updated = manualShifts.filter(s => s !== shiftToDelete);
-        setManualShifts(updated);
-        await saveManualShifts(updated);
-      } else {
-        // Scraper: Exclude by ID
-        const id = getShiftId(shiftToDelete);
-        const updated = [...excludedTutorShifts, id];
-        setExcludedTutorShifts(updated);
-        await saveExcludedTutorShifts(updated);
-      }
-    };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm('この予定を削除しますか？')) {
-        await doDelete();
-      }
+  // Delete Modal State
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [shiftToDelete, setShiftToDelete] = useState<Shift | null>(null);
+
+  const confirmDeleteShift = (shift: Shift) => {
+    setShiftToDelete(shift);
+    setDeleteModalVisible(true);
+  };
+
+  const performDelete = async () => {
+    if (!shiftToDelete) return;
+
+    if (shiftToDelete.type === 'MyBasket') {
+      // MyBasket: Exclude by Date
+      const updatedExclusions = [...excludedDates, shiftToDelete.date];
+      setExcludedDates(updatedExclusions);
+      await saveExcludedDates(updatedExclusions);
+    } else if (shiftToDelete.description === '手動追加') {
+      // Manual: Remove from manualShifts
+      const updated = manualShifts.filter(s => s !== shiftToDelete);
+      setManualShifts(updated);
+      await saveManualShifts(updated);
     } else {
-      Alert.alert('削除確認', 'この予定を削除しますか？', [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '削除',
-          style: 'destructive',
-          onPress: doDelete
-        }
-      ]);
+      // Scraper: Exclude by ID
+      const id = getShiftId(shiftToDelete);
+      const updated = [...excludedTutorShifts, id];
+      setExcludedTutorShifts(updated);
+      await saveExcludedTutorShifts(updated);
     }
+    setDeleteModalVisible(false);
+    setShiftToDelete(null);
   };
 
   const renderRightActions = (progress: any, dragX: any, index: number, item: Shift) => {
-    const trans = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [0, 0], // Static text
-      extrapolate: 'clamp',
-    });
     return (
-      <TouchableOpacity onPress={() => handleDeleteShift(index, item)} style={styles.deleteAction}>
+      <TouchableOpacity onPress={() => confirmDeleteShift(item)} style={styles.deleteAction}>
         <Text style={styles.deleteActionText}>削除</Text>
       </TouchableOpacity>
     );
@@ -419,7 +411,7 @@ export default function App() {
                 overshootRight={false}
                 onSwipeableOpen={(direction) => {
                   if (direction === 'right') {
-                    handleDeleteShift(index, item);
+                    confirmDeleteShift(item);
                   }
                 }}
               >
@@ -651,6 +643,25 @@ export default function App() {
               ListEmptyComponent={<Text style={styles.emptyText}>まだデータがありません</Text>}
             />
           </SafeAreaView>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={deleteModalVisible}
+          onRequestClose={() => setDeleteModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalTitle}>削除確認</Text>
+              <Text style={{ marginBottom: 20, textAlign: 'center' }}>この予定を削除しますか？{'\n'}({shiftToDelete?.title})</Text>
+              <View style={styles.modalButtons}>
+                <Button title="キャンセル" onPress={() => setDeleteModalVisible(false)} color="gray" />
+                <Button title="削除する" onPress={performDelete} color="#dd2c00" />
+              </View>
+            </View>
+          </View>
         </Modal>
       </SafeAreaView>
     </GestureHandlerRootView>
