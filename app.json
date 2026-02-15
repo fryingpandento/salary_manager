@@ -24,7 +24,19 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png",
+      "favicon": "/icon.png?v=2",
+      "splash": {
+        "image": "/icon.png?v=2",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      },
+      "meta": {
+        "apple": {
+          "touchIcon": "/icon.png?v=2",
+          "mobileWebAppCapable": "yes",
+          "statusBarStyle": "black-translucent"
+        }
+      },
       "display": "standalone",
       "orientation": "portrait",
       "backgroundColor": "#ffffff",
