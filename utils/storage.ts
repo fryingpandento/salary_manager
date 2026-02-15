@@ -90,3 +90,37 @@ export const saveDiscoveredLocations = async (locations: LocationStats[]): Promi
         console.error('Failed to save locations', e);
     }
 };
+
+// Reset all exclusions (Restore deleted shifts)
+export const resetAllExclusions = async (): Promise<void> => {
+    try {
+        await AsyncStorage.removeItem(EXCLUSION_KEY);
+        await AsyncStorage.removeItem(TUTOR_EXCLUSION_KEY);
+        await AsyncStorage.removeItem(SALARY_OVERRIDES_KEY); // Also reset overrides
+    } catch (e) {
+        console.error('Failed to reset exclusions', e);
+    }
+};
+
+const SALARY_OVERRIDES_KEY = '@salary_manager_overrides';
+
+// Load salary overrides { [shiftId]: newSalary }
+export const loadSalaryOverrides = async (): Promise<{ [key: string]: number }> => {
+    try {
+        const jsonValue = await AsyncStorage.getItem(SALARY_OVERRIDES_KEY);
+        return jsonValue != null ? JSON.parse(jsonValue) : {};
+    } catch (e) {
+        console.error('Failed to load salary overrides', e);
+        return {};
+    }
+};
+
+// Save salary overrides
+export const saveSalaryOverrides = async (overrides: { [key: string]: number }): Promise<void> => {
+    try {
+        const jsonValue = JSON.stringify(overrides);
+        await AsyncStorage.setItem(SALARY_OVERRIDES_KEY, jsonValue);
+    } catch (e) {
+        console.error('Failed to save salary overrides', e);
+    }
+};

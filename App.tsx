@@ -5,9 +5,10 @@ import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler'
 import { Calendar, DateData } from 'react-native-calendars';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Shift, ScraperData, parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage, calculateRangeTotal, calculateAnnualTotal, extractLocationName, LocationStats } from './utils/shiftCalculator';
-import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts, loadDiscoveredLocations, saveDiscoveredLocations } from './utils/storage';
+import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts, loadDiscoveredLocations, saveDiscoveredLocations, resetAllExclusions, loadSalaryOverrides, saveSalaryOverrides } from './utils/storage';
 // @ts-ignore
 import tutorDataRaw from './assets/shifts.json';
 
@@ -19,6 +20,7 @@ export default function App() {
   const [excludedDates, setExcludedDates] = useState<string[]>([]);
   const [excludedTutorShifts, setExcludedTutorShifts] = useState<string[]>([]); // New state for Tutor exclusions
   const [allShifts, setAllShifts] = useState<Shift[]>([]);
+  const [salaryOverrides, setSalaryOverrides] = useState<{ [key: string]: number }>({});
 
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
@@ -79,10 +81,12 @@ export default function App() {
       const exclusions = await loadExcludedDates();
       const tutorExclusions = await loadExcludedTutorShifts();
       const locations = await loadDiscoveredLocations();
+      const overrides = await loadSalaryOverrides();
       setManualShifts(shifts);
       setExcludedDates(exclusions);
       setExcludedTutorShifts(tutorExclusions);
       setDiscoveredLocations(locations);
+      setSalaryOverrides(overrides);
     };
     loadData();
   }, []);
@@ -97,7 +101,14 @@ export default function App() {
       .filter(s => !excludedTutorShifts.includes(getShiftId(s)));
 
     // Combine all
-    const combined = [...scraperShifts, ...manualShifts];
+    const combined = [...scraperShifts, ...manualShifts].map(s => {
+      // Apply overrides if exists
+      const id = getShiftId(s);
+      if (salaryOverrides[id] !== undefined) {
+        return { ...s, salary: salaryOverrides[id] };
+      }
+      return s;
+    });
     setAllShifts(combined);
 
 
@@ -156,7 +167,8 @@ export default function App() {
     };
     updateLocations();
 
-  }, [currentMonth, manualShifts, excludedDates, excludedTutorShifts]); // Only re-run when source data changes
+
+  }, [currentMonth, manualShifts, excludedDates, excludedTutorShifts, salaryOverrides]); // Only re-run when source data changes
 
   // Calculate Monthly Total
   const monthlyTotal = useMemo(() => {
@@ -336,6 +348,66 @@ export default function App() {
     setShiftToDelete(null);
   };
 
+  // Edit Logic
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editAmount, setEditAmount] = useState('');
+  const [shiftToEdit, setShiftToEdit] = useState<Shift | null>(null);
+
+  const openEditModal = (shift: Shift) => {
+    setShiftToEdit(shift);
+    setEditAmount(shift.salary.toString());
+    setEditModalVisible(true);
+  };
+
+  const saveEdit = async () => {
+    if (!shiftToEdit || !editAmount) return;
+    const newSalary = parseInt(editAmount, 10);
+    if (isNaN(newSalary)) {
+      Alert.alert('エラー', '有効な数字を入力してください');
+      return;
+    }
+
+    if (shiftToEdit.description === '手動追加') {
+      // Manual shift: Update manually
+      const updated = manualShifts.map(s => {
+        if (getShiftId(s) === getShiftId(shiftToEdit)) {
+          return { ...s, salary: newSalary };
+        }
+        return s;
+      });
+      setManualShifts(updated);
+      await saveManualShifts(updated);
+    } else {
+      // Scraper shift: Save override
+      const id = getShiftId(shiftToEdit);
+      const updatedOverrides = { ...salaryOverrides, [id]: newSalary };
+      setSalaryOverrides(updatedOverrides);
+      await saveSalaryOverrides(updatedOverrides);
+    }
+    setEditModalVisible(false);
+    setShiftToEdit(null);
+  };
+
+  const handleResetExclusions = async () => {
+    Alert.alert(
+      '復元',
+      '削除した予定（マイバス・家庭教師）を全て元に戻しますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '復元する',
+          style: 'destructive',
+          onPress: async () => {
+            await resetAllExclusions();
+            setExcludedDates([]);
+            setExcludedTutorShifts([]);
+            alert('削除した予定を復元しました');
+          }
+        }
+      ]
+    );
+  };
+
   const renderRightActions = (progress: any, dragX: any, index: number, item: Shift) => {
     return (
       <TouchableOpacity onPress={() => confirmDeleteShift(item)} style={styles.deleteAction}>
@@ -403,7 +475,8 @@ export default function App() {
               {format(parseISO(selectedDate), 'M月d日 (E)', { locale: ja })} の予定
             </Text>
             <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButton}>
-              <Text style={styles.addButtonText}>＋ 追加</Text>
+              <Ionicons name="add" size={24} color="#fff" />
+              <Text style={styles.addButtonText}> 追加</Text>
             </TouchableOpacity>
           </View>
 
@@ -425,8 +498,11 @@ export default function App() {
                     <Text style={styles.cardTitle}>{item.title}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
+                      <TouchableOpacity onPress={() => openEditModal(item)} style={styles.editButtonInternal}>
+                        <Ionicons name="pencil-outline" size={20} color="#00adf5" />
+                      </TouchableOpacity>
                       <TouchableOpacity onPress={() => confirmDeleteShift(item)} style={styles.deleteButtonInternal}>
-                        <Text style={styles.deleteButtonInternalText}>🗑️</Text>
+                        <Ionicons name="trash-outline" size={20} color="#ff4444" />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -438,6 +514,32 @@ export default function App() {
             ListEmptyComponent={<Text style={styles.emptyText}>予定はありません</Text>}
           />
         </View>
+
+        {/* Edit Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={editModalVisible}
+          onRequestClose={() => setEditModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalTitle}>金額を修正</Text>
+              <Text style={{ marginBottom: 10 }}>{shiftToEdit?.title} ({shiftToEdit?.date})</Text>
+              <TextInput
+                style={styles.input}
+                value={editAmount}
+                onChangeText={setEditAmount}
+                keyboardType="numeric"
+                placeholder="新しい金額"
+              />
+              <View style={styles.modalButtons}>
+                <Button title="キャンセル" onPress={() => setEditModalVisible(false)} color="gray" />
+                <Button title="保存" onPress={saveEdit} />
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Add Shift Modal */}
         <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
@@ -652,6 +754,9 @@ export default function App() {
               )}
               ListEmptyComponent={<Text style={styles.emptyText}>まだデータがありません</Text>}
             />
+            <View style={{ padding: 20, borderTopWidth: 1, borderTopColor: '#ddd' }}>
+              <Button title="削除した予定を復元する" onPress={handleResetExclusions} color="#ff4444" />
+            </View>
           </SafeAreaView>
         </Modal>
 
@@ -739,5 +844,5 @@ const styles = StyleSheet.create({
   closeButton: { padding: 5 },
   closeButtonText: { color: '#00adf5', fontWeight: 'bold' },
   deleteButtonInternal: { marginLeft: 10, padding: 5 },
-  deleteButtonInternalText: { fontSize: 18 }
+  editButtonInternal: { marginLeft: 15, padding: 5 },
 });
