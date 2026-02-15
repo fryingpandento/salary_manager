@@ -418,7 +418,12 @@ export default function App() {
                 <View style={[styles.card, { borderLeftColor: item.color || (item.type === 'Tutor' ? 'red' : 'blue') }]}>
                   <View style={styles.cardHeader}>
                     <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
+                      <TouchableOpacity onPress={() => confirmDeleteShift(item)} style={styles.deleteButtonInternal}>
+                        <Text style={styles.deleteButtonInternalText}>🗑️</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   <Text style={styles.cardTime}>{item.startTime} - {item.endTime}</Text>
                   <Text style={styles.hintText}>◀ スライドアクション</Text>
@@ -727,5 +732,7 @@ const styles = StyleSheet.create({
   zukanRank: { fontSize: 10, fontWeight: 'bold', marginRight: 5 },
   zukanCount: { color: '#555', fontSize: 12, fontWeight: 'bold' },
   closeButton: { padding: 5 },
-  closeButtonText: { color: '#00adf5', fontWeight: 'bold' }
+  closeButtonText: { color: '#00adf5', fontWeight: 'bold' },
+  deleteButtonInternal: { marginLeft: 10, padding: 5 },
+  deleteButtonInternalText: { fontSize: 18 }
 });
