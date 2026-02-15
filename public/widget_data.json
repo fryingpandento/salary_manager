@@ -1,15 +1,6 @@
 {
-  "update_at": "2026-02-15T05:41:04",
+  "update_at": "2026-02-15T05:46:44",
   "future_schedules": [
-    {
-      "date_str": "2/16(月)",
-      "time_str": "17:00",
-      "end_time_str": "20:45",
-      "location": "介護老人福祉施設 春輝苑",
-      "type": "try",
-      "start_timestamp": 1771228800000,
-      "end_timestamp": 1771242300000
-    },
     {
       "date_str": "2/19(木)",
       "time_str": "17:00",
