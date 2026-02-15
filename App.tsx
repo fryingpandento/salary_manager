@@ -98,7 +98,8 @@ export default function App() {
   useEffect(() => {
     // 1. Scraper Shifts (Always fresh from JSON)
     const scraperShifts = parseTutorShifts(tutorDataRaw as ScraperData[])
-      .filter(s => !excludedTutorShifts.includes(getShiftId(s)));
+      .filter(s => !excludedTutorShifts.includes(getShiftId(s)))
+      .filter(s => !(s.type === 'MyBasket' && excludedDates.includes(s.date)));
 
     // Combine all
     const combined = [...scraperShifts, ...manualShifts].map(s => {
