@@ -24,7 +24,16 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "display": "standalone",
+      "orientation": "portrait",
+      "backgroundColor": "#ffffff",
+      "themeColor": "#ffffff",
+      "lang": "ja",
+      "shortName": "SalaryMgr",
+      "name": "アルバイト給与管理",
+      "startUrl": "/",
+      "scope": "/"
     },
     "plugins": [
       "@react-native-community/datetimepicker"
