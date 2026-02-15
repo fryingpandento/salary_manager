@@ -4,7 +4,7 @@
     "slug": "salary_manager",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/gemini_icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -24,7 +24,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/gemini_favicon.png",
+      "favicon": "./assets/favicon.png",
       "display": "standalone",
       "orientation": "portrait",
       "backgroundColor": "#ffffff",
