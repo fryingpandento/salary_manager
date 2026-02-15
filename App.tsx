@@ -310,12 +310,7 @@ export default function App() {
   const performDelete = async () => {
     if (!shiftToDelete) return;
 
-    if (shiftToDelete.type === 'MyBasket') {
-      // MyBasket: Exclude by Date
-      const updatedExclusions = [...excludedDates, shiftToDelete.date];
-      setExcludedDates(updatedExclusions);
-      await saveExcludedDates(updatedExclusions);
-    } else if (shiftToDelete.description === '手動追加') {
+    if (shiftToDelete.description === '手動追加') {
       // Manual: Remove from manualShifts
       const updated = manualShifts.filter(s =>
         !(s.date === shiftToDelete.date &&
@@ -325,6 +320,11 @@ export default function App() {
       );
       setManualShifts(updated);
       await saveManualShifts(updated);
+    } else if (shiftToDelete.type === 'MyBasket') {
+      // MyBasket: Exclude by Date
+      const updatedExclusions = [...excludedDates, shiftToDelete.date];
+      setExcludedDates(updatedExclusions);
+      await saveExcludedDates(updatedExclusions);
     } else {
       // Scraper: Exclude by ID
       const id = getShiftId(shiftToDelete);
