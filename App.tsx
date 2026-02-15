@@ -755,8 +755,9 @@ export default function App() {
               )}
               ListEmptyComponent={<Text style={styles.emptyText}>まだデータがありません</Text>}
             />
-            <View style={{ padding: 20, borderTopWidth: 1, borderTopColor: '#ddd' }}>
+            <View style={{ padding: 20, borderTopWidth: 1, borderTopColor: '#ddd', alignItems: 'center' }}>
               <Button title="削除した予定を復元する" onPress={handleResetExclusions} color="#ff4444" />
+              <Text style={{ color: '#aaa', marginTop: 10 }}>v1.0.1</Text>
             </View>
           </SafeAreaView>
         </Modal>
