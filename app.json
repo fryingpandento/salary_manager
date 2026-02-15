@@ -24,15 +24,15 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "/icon.png?v=2",
+      "favicon": "./public/icon.png",
       "splash": {
-        "image": "/icon.png?v=2",
+        "image": "./public/icon.png",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       },
       "meta": {
         "apple": {
-          "touchIcon": "/icon.png?v=2",
+          "touchIcon": "https://salary-manager-zeta.vercel.app/icon.png",
           "mobileWebAppCapable": "yes",
           "statusBarStyle": "black-translucent"
         }
