@@ -317,7 +317,12 @@ export default function App() {
       await saveExcludedDates(updatedExclusions);
     } else if (shiftToDelete.description === '手動追加') {
       // Manual: Remove from manualShifts
-      const updated = manualShifts.filter(s => s !== shiftToDelete);
+      const updated = manualShifts.filter(s =>
+        !(s.date === shiftToDelete.date &&
+          s.startTime === shiftToDelete.startTime &&
+          s.endTime === shiftToDelete.endTime &&
+          s.title === shiftToDelete.title)
+      );
       setManualShifts(updated);
       await saveManualShifts(updated);
     } else {
