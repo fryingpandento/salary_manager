@@ -279,6 +279,9 @@ export default function App() {
     ]);
   };
 
+  // Settings Modal
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+
   // Date/Time Helpers
   const onStartTimeChange = (event: any, date?: Date) => { setShowStartTimePicker(false); if (date) setNewShiftStart(format(date, 'HH:mm')); };
   const onEndTimeChange = (event: any, date?: Date) => { setShowEndTimePicker(false); if (date) setNewShiftEnd(format(date, 'HH:mm')); };
@@ -298,6 +301,14 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Salary Manager</Text>
+          <TouchableOpacity onPress={() => setSettingsModalVisible(true)} style={styles.headerButton}>
+            <Ionicons name="settings-outline" size={24} color={PRIMARY_COLOR} />
+          </TouchableOpacity>
+        </View>
+
         <ScrollView contentContainerStyle={styles.scrollContent}>
 
           {/* Hero Section */}
@@ -320,60 +331,6 @@ export default function App() {
             <Text style={styles.wallStats}>{((annualTotal / WALL_LIMIT) * 100).toFixed(1)}% 消化 (¥{annualTotal.toLocaleString()})</Text>
           </View>
 
-
-          {/* Weekly Schedule Card (NEW) */}
-          <Text style={styles.sectionHeader}>直近の予定</Text>
-          <View style={[styles.card, { padding: 0 }]}>
-            {upcomingShifts.length === 0 ? (
-              <View style={{ padding: 20, alignItems: 'center' }}>
-                <Text style={{ color: SUBTEXT_COLOR }}>直近の予定はありません</Text>
-              </View>
-            ) : (
-              upcomingShifts.map((item, index) => (
-                <View key={index} style={[styles.listItem, index !== upcomingShifts.length - 1 && styles.listItemSeparator]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', width: 50 }}>
-                    <View style={{ alignItems: 'center' }}>
-                      <Text style={{ fontSize: 10, color: '#FF3B30', fontWeight: '600' }}>{format(parseISO(item.date), 'MMM', { locale: ja })}</Text>
-                      <Text style={{ fontSize: 18, color: TEXT_COLOR, fontWeight: '500' }}>{format(parseISO(item.date), 'd')}</Text>
-                    </View>
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.itemTime}>{item.startTime} - {item.endTime} <Text style={{ color: SUBTEXT_COLOR }}>{item.location ? `• ${item.location}` : ''}</Text></Text>
-                  </View>
-                  <Text style={styles.itemPrice}>¥{item.salary.toLocaleString()}</Text>
-                </View>
-              ))
-            )}
-          </View>
-
-          {/* Settings / Actions List (Replaced Menu Grid) */}
-          <Text style={styles.sectionHeader}>メニュー</Text>
-          <View style={[styles.card, { padding: 0 }]}>
-            <TouchableOpacity style={styles.listItem} onPress={() => setModalVisible(true)}>
-              <View style={[styles.menuIconContainerList, { backgroundColor: PRIMARY_COLOR }]}>
-                <Ionicons name="add" size={20} color="#fff" />
-              </View>
-              <Text style={[styles.itemTitle, { flex: 1, marginBottom: 0, marginLeft: 12 }]}>シフト追加</Text>
-              <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
-            </TouchableOpacity>
-            <View style={styles.listItemSeparator} />
-            <TouchableOpacity style={styles.listItem} onPress={() => { setRangeStart(format(new Date(), 'yyyy-MM-01')); setRangeEnd(format(new Date(), 'yyyy-MM-dd')); setRangeTotal(null); setRangeModalVisible(true); }}>
-              <View style={[styles.menuIconContainerList, { backgroundColor: SUCCESS_COLOR }]}>
-                <Ionicons name="calculator-outline" size={20} color="#fff" />
-              </View>
-              <Text style={[styles.itemTitle, { flex: 1, marginBottom: 0, marginLeft: 12 }]}>期間集計</Text>
-              <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
-            </TouchableOpacity>
-            <View style={styles.listItemSeparator} />
-            <TouchableOpacity style={styles.listItem} onPress={() => setZukanModalVisible(true)}>
-              <View style={[styles.menuIconContainerList, { backgroundColor: '#FF9500' }]}>
-                <Ionicons name="book-outline" size={20} color="#fff" />
-              </View>
-              <Text style={[styles.itemTitle, { flex: 1, marginBottom: 0, marginLeft: 12 }]}>バイト図鑑</Text>
-              <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
-            </TouchableOpacity>
-          </View>
 
           {/* Calendar Card */}
           <View style={styles.card}>
@@ -431,6 +388,34 @@ export default function App() {
             )}
           </View>
 
+          <View style={{ height: 20 }} />
+
+          {/* Upcoming Shifts (Moved here) */}
+          <Text style={styles.sectionHeader}>直近の予定</Text>
+          <View style={[styles.card, { padding: 0 }]}>
+            {upcomingShifts.length === 0 ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Text style={{ color: SUBTEXT_COLOR }}>直近の予定はありません</Text>
+              </View>
+            ) : (
+              upcomingShifts.map((item, index) => (
+                <View key={index} style={[styles.listItem, index !== upcomingShifts.length - 1 && styles.listItemSeparator]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', width: 50 }}>
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ fontSize: 10, color: '#FF3B30', fontWeight: '600' }}>{format(parseISO(item.date), 'MMM', { locale: ja })}</Text>
+                      <Text style={{ fontSize: 18, color: TEXT_COLOR, fontWeight: '500' }}>{format(parseISO(item.date), 'd')}</Text>
+                    </View>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.itemTime}>{item.startTime} - {item.endTime} <Text style={{ color: SUBTEXT_COLOR }}>{item.location ? `• ${item.location}` : ''}</Text></Text>
+                  </View>
+                  <Text style={styles.itemPrice}>¥{item.salary.toLocaleString()}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
           <View style={{ height: 40 }} />
         </ScrollView>
 
@@ -450,7 +435,6 @@ export default function App() {
                   </TouchableOpacity>
                 ))}
               </View>
-
               {newShiftType !== 'MyBasket' && (
                 <TextInput style={styles.input} placeholder="タイトル" value={newShiftTitle} onChangeText={setNewShiftTitle} placeholderTextColor={SUBTEXT_COLOR} />
               )}
@@ -559,12 +543,15 @@ export default function App() {
         </Modal>
 
       </SafeAreaView>
-    </GestureHandlerRootView>
+    </GestureHandlerRootView >
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG_COLOR },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: 'rgba(242,242,247,0.9)', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#C6C6C8' },
+  headerTitle: { fontSize: 17, fontWeight: '600', color: TEXT_COLOR },
+  headerButton: { padding: 8 },
   scrollContent: { padding: 16 },
 
   heroSection: { alignItems: 'center', marginBottom: 20, marginTop: 10 },
