@@ -30,6 +30,7 @@ export default function App() {
   const [newShiftEnd, setNewShiftEnd] = useState('12:00');
   const [newShiftType, setNewShiftType] = useState<'Tutor' | 'MyBasket' | 'Other'>('Tutor');
   const [newHourlyWage, setNewHourlyWage] = useState('');
+  const [newShiftLocation, setNewShiftLocation] = useState('');
   const [selectedColor, setSelectedColor] = useState('#ff0000');
   // Range Calculation State
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
@@ -71,6 +72,7 @@ export default function App() {
       setSelectedColor('#008000'); // Default green for hourly
     } else {
       setSelectedColor('#ff0000'); // Default red for manual
+      setNewShiftLocation('');
     }
   }, [newShiftType, newShiftStart, newShiftEnd, newHourlyWage, selectedDate]);
 
@@ -219,7 +221,8 @@ export default function App() {
       endTime: newShiftEnd,
       description: '手動追加',
       hourlyRate: newShiftType === 'Other' ? parseInt(newHourlyWage) : undefined,
-      color: selectedColor
+      color: selectedColor,
+      location: newShiftLocation
     };
 
     const updated = [...manualShifts, newShift];
@@ -229,6 +232,7 @@ export default function App() {
     setModalVisible(false);
     setNewShiftTitle('');
     setNewShiftSalary('');
+    setNewShiftLocation('');
   };
 
   const handleRangeCalculation = () => {
@@ -647,6 +651,14 @@ export default function App() {
                   onChange={onEndTimeChange}
                 />
               )}
+
+              {/* Location Input (Optional) */}
+              <TextInput
+                style={styles.input}
+                placeholder="場所 (任意)"
+                value={newShiftLocation}
+                onChangeText={setNewShiftLocation}
+              />
 
               <View style={styles.modalButtons}>
                 <Button title="キャンセル" onPress={() => setModalVisible(false)} color="gray" />

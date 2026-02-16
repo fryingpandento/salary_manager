@@ -10,6 +10,7 @@ export interface Shift {
     endTime?: string;
     hourlyRate?: number;
     color?: string;
+    location?: string;
 }
 
 // Matches the output of the schedule scraper
