@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Modal, TextInput, Alert, Button, Animated, Platform } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { StyleSheet, Text, View, SafeAreaView, FlatList, TouchableOpacity, Modal, TextInput, Alert, Button, ScrollView, Platform, StatusBar } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import { Calendar, DateData } from 'react-native-calendars';
@@ -7,10 +7,35 @@ import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Shift, ScraperData, parseTutorShifts, generateMyBasketShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage, calculateRangeTotal, calculateAnnualTotal, extractLocationName, LocationStats } from './utils/shiftCalculator';
+import { Shift, ScraperData, parseTutorShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage, calculateRangeTotal, calculateAnnualTotal, extractLocationName, LocationStats } from './utils/shiftCalculator';
 import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts, loadDiscoveredLocations, saveDiscoveredLocations, resetAllExclusions, loadSalaryOverrides, saveSalaryOverrides } from './utils/storage';
 // @ts-ignore
 import tutorDataRaw from './assets/shifts.json';
+
+// --- Modern iOS Constants ---
+const PRIMARY_COLOR = '#007AFF'; // iOS Blue
+const BG_COLOR = '#F2F2F7'; // iOS System Grouped Background
+const CARD_BG = '#FFFFFF';
+const TEXT_COLOR = '#1C1C1E';
+const SUBTEXT_COLOR = '#8E8E93';
+const DESTRUCTIVE_COLOR = '#FF3B30'; // iOS Red
+const SUCCESS_COLOR = '#34C759'; // iOS Green
+
+// Shadow Style for Cards
+const SHADOW_STYLE = Platform.select({
+  ios: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  android: {
+    elevation: 3,
+  },
+  web: {
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
+  }
+});
 
 export default function App() {
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -18,7 +43,7 @@ export default function App() {
 
   const [manualShifts, setManualShifts] = useState<Shift[]>([]);
   const [excludedDates, setExcludedDates] = useState<string[]>([]);
-  const [excludedTutorShifts, setExcludedTutorShifts] = useState<string[]>([]); // New state for Tutor exclusions
+  const [excludedTutorShifts, setExcludedTutorShifts] = useState<string[]>([]);
   const [allShifts, setAllShifts] = useState<Shift[]>([]);
   const [salaryOverrides, setSalaryOverrides] = useState<{ [key: string]: number }>({});
 
@@ -31,20 +56,18 @@ export default function App() {
   const [newShiftType, setNewShiftType] = useState<'Tutor' | 'MyBasket' | 'Other'>('Tutor');
   const [newHourlyWage, setNewHourlyWage] = useState('');
   const [newShiftLocation, setNewShiftLocation] = useState('');
-  const [selectedColor, setSelectedColor] = useState('#ff0000');
+
   // Range Calculation State
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
   const [rangeTotal, setRangeTotal] = useState<number | null>(null);
 
-  // Picker Visibility State
+  // Picker Visibility
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [showRangeStartDatePicker, setShowRangeStartDatePicker] = useState(false);
   const [showRangeEndDatePicker, setShowRangeEndDatePicker] = useState(false);
-
-
 
   // 1.03M Wall State
   const [annualTotal, setAnnualTotal] = useState(0);
@@ -54,24 +77,19 @@ export default function App() {
   const [zukanModalVisible, setZukanModalVisible] = useState(false);
   const [discoveredLocations, setDiscoveredLocations] = useState<LocationStats[]>([]);
 
-  const COLORS = ['#ff0000', '#0000ff', '#008000', '#ffa500', '#800080'];
-
-  // Auto-calculate salary when inputs change
+  // Auto-calculate salary
   useEffect(() => {
     if (newShiftType === 'MyBasket') {
       const wage = calculateMyBasketWage(selectedDate, newShiftStart, newShiftEnd);
       setNewShiftSalary(wage.toString());
       setNewShiftTitle('まいばす');
-      setSelectedColor('#0000ff');
     } else if (newShiftType === 'Other') {
       const rate = parseInt(newHourlyWage, 10);
       if (!isNaN(rate) && rate > 0) {
         const wage = calculateHourlyWage(rate, newShiftStart, newShiftEnd);
         setNewShiftSalary(wage.toString());
       }
-      setSelectedColor('#008000'); // Default green for hourly
     } else {
-      setSelectedColor('#ff0000'); // Default red for manual
       setNewShiftLocation('');
     }
   }, [newShiftType, newShiftStart, newShiftEnd, newHourlyWage, selectedDate]);
@@ -93,19 +111,15 @@ export default function App() {
     loadData();
   }, []);
 
-  // Helper to generate unique ID for exclusion
   const getShiftId = (s: Shift) => `${s.date}_${s.startTime}_${s.endTime}_${s.title}`;
 
   // Combine shifts
   useEffect(() => {
-    // 1. Scraper Shifts (Always fresh from JSON)
     const scraperShifts = parseTutorShifts(tutorDataRaw as ScraperData[])
       .filter(s => !excludedTutorShifts.includes(getShiftId(s)))
       .filter(s => !(s.type === 'MyBasket' && excludedDates.includes(s.date)));
 
-    // Combine all
     const combined = [...scraperShifts, ...manualShifts].map(s => {
-      // Apply overrides if exists
       const id = getShiftId(s);
       if (salaryOverrides[id] !== undefined) {
         return { ...s, salary: salaryOverrides[id] };
@@ -114,86 +128,62 @@ export default function App() {
     });
     setAllShifts(combined);
 
-
-    // Calculate Annual Total
     const currentYear = new Date().getFullYear();
     setAnnualTotal(calculateAnnualTotal(combined, currentYear));
 
-    // Update Baito Zukan Logic
+    // Zukan Logic (simplified update)
     const updateLocations = async () => {
       let stats = [...discoveredLocations];
       let changed = false;
-
       combined.forEach(shift => {
-        // Determine location name
         let locName = 'その他';
-        if (shift.type === 'MyBasket') {
-          locName = 'まいばすけっと';
-        } else if (shift.type === 'Tutor') {
-          locName = extractLocationName(shift.description || shift.title);
-        } else {
-          locName = shift.title; // For 'Other' types
-        }
+        if (shift.type === 'MyBasket') locName = 'まいばすけっと';
+        else if (shift.type === 'Tutor') locName = extractLocationName(shift.description || shift.title);
+        else locName = shift.title;
 
         if (!locName || locName === '不明') return;
-
-        const existingIndex = stats.findIndex(l => l.name === locName);
-        if (existingIndex >= 0) {
-          // Already discovered, maybe update count logic could go here if we want to track *all* history from scratch every time
-          // For now, we just ensure it exists. 
-          // Simple Count Logic: Recalculate counts from *current* allShifts to be accurate?
-          // Or just add new ones? 
-          // Let's recalculate all counts based on current loaded shifts to be safe and simple.
-        } else {
+        if (!stats.find(l => l.name === locName)) {
           stats.push({ name: locName, count: 0, lastVisited: shift.date });
           changed = true;
         }
       });
 
-      // Recalculate counts
       stats = stats.map(loc => {
         const count = combined.filter(s => {
           if (loc.name === 'まいばすけっと') return s.type === 'MyBasket';
           const sName = s.type === 'Tutor' ? extractLocationName(s.description || s.title) : s.title;
           return sName === loc.name;
         }).length;
-        return { ...loc, count, lastVisited: loc.lastVisited }; // Update count
+        return { ...loc, count };
       });
 
-      // Save if meaningful change or if we just want to keep sync
-      // To avoid infinite loops or heavy path, maybe only save if deep diff?
-      // For this size, saving is fine.
-      if (JSON.stringify(stats) !== JSON.stringify(discoveredLocations)) {
+      if (changed || JSON.stringify(stats) !== JSON.stringify(discoveredLocations)) {
         setDiscoveredLocations(stats);
         saveDiscoveredLocations(stats);
       }
     };
     updateLocations();
+  }, [currentMonth, manualShifts, excludedDates, excludedTutorShifts, salaryOverrides]);
 
-
-  }, [currentMonth, manualShifts, excludedDates, excludedTutorShifts, salaryOverrides]); // Only re-run when source data changes
-
-  // Calculate Monthly Total
   const monthlyTotal = useMemo(() => {
     const [y, m] = currentMonth.split('-').map(Number);
     return calculateMonthlyTotal(allShifts, y, m);
   }, [allShifts, currentMonth]);
 
-  // Calendar Marked Dates
   const markedDates = useMemo(() => {
     const marks: any = {};
     allShifts.forEach(shift => {
       if (!marks[shift.date]) marks[shift.date] = { dots: [] };
-      const color = shift.color || (shift.type === 'Tutor' ? 'red' : 'blue');
+      const color = shift.type === 'Tutor' ? '#FF5252' : '#448AFF';
       if (!marks[shift.date].dots.find((d: any) => d.color === color)) {
         marks[shift.date].dots.push({ color });
       }
     });
     if (marks[selectedDate]) {
       marks[selectedDate].selected = true;
-      marks[selectedDate].selectedColor = '#00adf5';
+      marks[selectedDate].selectedColor = PRIMARY_COLOR;
     } else {
-      marks[selectedDate] = { selected: true, selectedColor: '#00adf5', dots: [] };
+      marks[selectedDate] = { selected: true, selectedColor: PRIMARY_COLOR, dots: [] };
     }
     return marks;
   }, [allShifts, selectedDate]);
@@ -202,661 +192,378 @@ export default function App() {
 
   // Handlers
   const handleAddShift = async () => {
-    if (!newShiftTitle || !newShiftSalary) {
-      Alert.alert('エラー', 'タイトルと金額を入力してください');
-      return;
-    }
+    if (!newShiftTitle || !newShiftSalary) { Alert.alert('エラー', 'タイトルと金額を入力してください'); return; }
     const salaryNum = parseInt(newShiftSalary, 10);
-    if (isNaN(salaryNum)) {
-      Alert.alert('エラー', '金額は半角数字で入力してください');
-      return;
-    }
+    if (isNaN(salaryNum)) { Alert.alert('エラー', '有効な数字を入力してください'); return; }
 
     const newShift: Shift = {
       date: selectedDate,
       title: newShiftTitle,
       salary: salaryNum,
-      type: newShiftType === 'Other' ? 'Tutor' : newShiftType, // "Other" treated as Tutor type for color/editing in this simple version, or map correctly if we update types
+      type: newShiftType === 'Other' ? 'Tutor' : newShiftType,
       startTime: newShiftStart,
       endTime: newShiftEnd,
       description: '手動追加',
       hourlyRate: newShiftType === 'Other' ? parseInt(newHourlyWage) : undefined,
-      color: selectedColor,
-      location: newShiftLocation
     };
 
     const updated = [...manualShifts, newShift];
     setManualShifts(updated);
     await saveManualShifts(updated);
-
     setModalVisible(false);
     setNewShiftTitle('');
     setNewShiftSalary('');
-    setNewShiftLocation('');
   };
 
   const handleRangeCalculation = () => {
-    if (!rangeStart || !rangeEnd) {
-      setRangeTotal(null);
-      return;
-    }
+    if (!rangeStart || !rangeEnd) { setRangeTotal(null); return; }
     const total = calculateRangeTotal(allShifts, rangeStart, rangeEnd);
     setRangeTotal(total);
   };
 
-  // Helper: Get color based on level
-  const getLevelColor = (count: number) => {
-    if (count >= 50) return '#FFD700'; // Gold
-    if (count >= 20) return '#C0C0C0'; // Silver
-    if (count >= 10) return '#cd7f32'; // Bronze
-    if (count >= 5) return '#00adf5'; // Blue
-    return '#888'; // Gray
-  };
-
-  // Helper: Get unique color for location name
-  const getStringColor = (str: string) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-    return '#' + '00000'.substring(0, 6 - c.length) + c;
-  };
-
-  const getRankTitle = (count: number) => {
-    if (count >= 50) return '達人';
-    if (count >= 20) return '熟練';
-    if (count >= 10) return '常連';
-    if (count >= 5) return '見習い';
-    return '新人';
-  };
-
-  // Date/Time Picker Handlers
-  const onStartTimeChange = (event: any, selectedDate?: Date) => {
-    setShowStartTimePicker(false);
-    if (selectedDate) {
-      setNewShiftStart(format(selectedDate, 'HH:mm'));
-    }
-  };
-
-  const onEndTimeChange = (event: any, selectedDate?: Date) => {
-    setShowEndTimePicker(false);
-    if (selectedDate) {
-      setNewShiftEnd(format(selectedDate, 'HH:mm'));
-    }
-  };
-
-  const onRangeStartDateChange = (event: any, selectedDate?: Date) => {
-    setShowRangeStartDatePicker(false);
-    if (selectedDate) {
-      setRangeStart(format(selectedDate, 'yyyy-MM-dd'));
-    }
-  };
-
-  const onRangeEndDateChange = (event: any, selectedDate?: Date) => {
-    setShowRangeEndDatePicker(false);
-    if (selectedDate) {
-      setRangeEnd(format(selectedDate, 'yyyy-MM-dd'));
-    }
-  };
-
-  // Helper to create Date object from time string (HH:mm)
-  const getTimeDate = (timeStr: string) => {
-    const d = new Date();
-    const [h, m] = timeStr.split(':').map(Number);
-    d.setHours(h || 0);
-    d.setMinutes(m || 0);
-    return d;
-  };
-
-  // Helper to create Date object from date string (YYYY-MM-DD)
-  const getDateObj = (dateStr: string) => {
-    return dateStr ? parseISO(dateStr) : new Date();
-  };
-
-
-  // Delete Modal State
+  // Delete/Edit Logic
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [shiftToDelete, setShiftToDelete] = useState<Shift | null>(null);
-
-  const confirmDeleteShift = (shift: Shift) => {
-    setShiftToDelete(shift);
-    setDeleteModalVisible(true);
-  };
-
-  const performDelete = async () => {
-    if (!shiftToDelete) return;
-
-    if (shiftToDelete.description === '手動追加') {
-      // Manual: Remove from manualShifts
-      const updated = manualShifts.filter(s =>
-        !(s.date === shiftToDelete.date &&
-          s.startTime === shiftToDelete.startTime &&
-          s.endTime === shiftToDelete.endTime &&
-          s.title === shiftToDelete.title)
-      );
-      setManualShifts(updated);
-      await saveManualShifts(updated);
-    } else if (shiftToDelete.type === 'MyBasket') {
-      // MyBasket: Exclude by Date
-      const updatedExclusions = [...excludedDates, shiftToDelete.date];
-      setExcludedDates(updatedExclusions);
-      await saveExcludedDates(updatedExclusions);
-    } else {
-      // Scraper: Exclude by ID
-      const id = getShiftId(shiftToDelete);
-      const updated = [...excludedTutorShifts, id];
-      setExcludedTutorShifts(updated);
-      await saveExcludedTutorShifts(updated);
-    }
-    setDeleteModalVisible(false);
-    setShiftToDelete(null);
-  };
-
-  // Edit Logic
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editAmount, setEditAmount] = useState('');
   const [shiftToEdit, setShiftToEdit] = useState<Shift | null>(null);
 
-  const openEditModal = (shift: Shift) => {
-    setShiftToEdit(shift);
-    setEditAmount(shift.salary.toString());
-    setEditModalVisible(true);
+  const confirmDeleteShift = (shift: Shift) => { setShiftToDelete(shift); setDeleteModalVisible(true); };
+  const performDelete = async () => {
+    if (!shiftToDelete) return;
+    if (shiftToDelete.description === '手動追加') {
+      const updated = manualShifts.filter(s => !(s.date === shiftToDelete.date && s.startTime === shiftToDelete.startTime && s.endTime === shiftToDelete.endTime && s.title === shiftToDelete.title));
+      setManualShifts(updated); await saveManualShifts(updated);
+    } else {
+      const id = getShiftId(shiftToDelete);
+      if (shiftToDelete.type === 'MyBasket') { setExcludedDates([...excludedDates, shiftToDelete.date]); await saveExcludedDates([...excludedDates, shiftToDelete.date]); }
+      else { setExcludedTutorShifts([...excludedTutorShifts, id]); await saveExcludedTutorShifts([...excludedTutorShifts, id]); }
+    }
+    setDeleteModalVisible(false); setShiftToDelete(null);
   };
 
+  const openEditModal = (shift: Shift) => { setShiftToEdit(shift); setEditAmount(shift.salary.toString()); setEditModalVisible(true); };
   const saveEdit = async () => {
     if (!shiftToEdit || !editAmount) return;
     const newSalary = parseInt(editAmount, 10);
-    if (isNaN(newSalary)) {
-      Alert.alert('エラー', '有効な数字を入力してください');
-      return;
-    }
-
     if (shiftToEdit.description === '手動追加') {
-      // Manual shift: Update manually
-      const updated = manualShifts.map(s => {
-        if (getShiftId(s) === getShiftId(shiftToEdit)) {
-          return { ...s, salary: newSalary };
-        }
-        return s;
-      });
-      setManualShifts(updated);
-      await saveManualShifts(updated);
+      const updated = manualShifts.map(s => getShiftId(s) === getShiftId(shiftToEdit) ? { ...s, salary: newSalary } : s);
+      setManualShifts(updated); await saveManualShifts(updated);
     } else {
-      // Scraper shift: Save override
-      const id = getShiftId(shiftToEdit);
-      const updatedOverrides = { ...salaryOverrides, [id]: newSalary };
-      setSalaryOverrides(updatedOverrides);
-      await saveSalaryOverrides(updatedOverrides);
+      const updatedOverrides = { ...salaryOverrides, [getShiftId(shiftToEdit)]: newSalary };
+      setSalaryOverrides(updatedOverrides); await saveSalaryOverrides(updatedOverrides);
     }
-    setEditModalVisible(false);
-    setShiftToEdit(null);
+    setEditModalVisible(false); setShiftToEdit(null);
   };
 
   const handleResetExclusions = async () => {
-    Alert.alert(
-      '復元',
-      '削除した予定（マイバス・家庭教師）を全て元に戻しますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '復元する',
-          style: 'destructive',
-          onPress: async () => {
-            await resetAllExclusions();
-            setExcludedDates([]);
-            setExcludedTutorShifts([]);
-            alert('削除した予定を復元しました');
-          }
-        }
-      ]
-    );
+    Alert.alert('復元', '削除した予定を復元しますか？', [
+      { text: 'キャンセル', style: 'cancel' },
+      { text: '復元する', style: 'destructive', onPress: async () => { await resetAllExclusions(); setExcludedDates([]); setExcludedTutorShifts([]); alert('復元しました'); } }
+    ]);
   };
 
-  const renderRightActions = (progress: any, dragX: any, index: number, item: Shift) => {
-    return (
-      <TouchableOpacity onPress={() => confirmDeleteShift(item)} style={styles.deleteAction}>
-        <Text style={styles.deleteActionText}>削除</Text>
-      </TouchableOpacity>
-    );
-  };
+  // Date/Time Helpers
+  const onStartTimeChange = (event: any, date?: Date) => { setShowStartTimePicker(false); if (date) setNewShiftStart(format(date, 'HH:mm')); };
+  const onEndTimeChange = (event: any, date?: Date) => { setShowEndTimePicker(false); if (date) setNewShiftEnd(format(date, 'HH:mm')); };
+  const onRangeStartDateChange = (event: any, date?: Date) => { setShowRangeStartDatePicker(false); if (date) setRangeStart(format(date, 'yyyy-MM-dd')); };
+  const onRangeEndDateChange = (event: any, date?: Date) => { setShowRangeEndDatePicker(false); if (date) setRangeEnd(format(date, 'yyyy-MM-dd')); };
+  const getDateObj = (str: string) => str ? parseISO(str) : new Date();
+  const getTimeDate = (timeStr: string) => { const d = new Date(); const [h, m] = timeStr.split(':').map(Number); d.setHours(h); d.setMinutes(m); return d; };
+
+  // --- Render Components ---
+  const renderRightActions = (progress: any, dragX: any, index: number, item: Shift) => (
+    <TouchableOpacity onPress={() => confirmDeleteShift(item)} style={styles.deleteAction}>
+      <Ionicons name="trash-outline" size={24} color="#fff" />
+    </TouchableOpacity>
+  );
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-            <Text style={styles.monthText}>
-              {format(parseISO(currentMonth + '-01'), 'yyyy年M月', { locale: ja })} の給与予測
-            </Text>
-            <TouchableOpacity onPress={() => {
-              setRangeStart(format(new Date(), 'yyyy-MM-01'));
-              setRangeEnd(format(new Date(), 'yyyy-MM-dd'));
-              setRangeTotal(null);
-              setRangeModalVisible(true);
-            }} style={styles.rangeButton}>
-              <Text style={styles.rangeButtonText}>期間集計</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setZukanModalVisible(true)} style={styles.zukanButton}>
-              <Text style={styles.zukanButtonText}>図鑑</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.totalAmount}>¥{monthlyTotal.toLocaleString()}</Text>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
 
-          {/* Wall Meter */}
-          <View style={styles.wallContainer}>
-            <View style={styles.wallHeader}>
-              <Text style={styles.wallTitle}>103万の壁</Text>
-              <Text style={styles.wallRemaining}>あと ¥{(WALL_LIMIT - annualTotal).toLocaleString()}</Text>
+          {/* Hero Section */}
+          <View style={styles.heroSection}>
+            <Text style={styles.heroMonth}>{format(parseISO(currentMonth + '-01'), 'yyyy年M月', { locale: ja })}</Text>
+            <Text style={styles.heroAmount}>¥{monthlyTotal.toLocaleString()}</Text>
+          </View>
+
+          {/* Wall Meter Card */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>103万の壁</Text>
+              <Text style={[styles.cardTitle, { color: SUBTEXT_COLOR, fontSize: 14 }]}>
+                残り ¥{(WALL_LIMIT - annualTotal).toLocaleString()}
+              </Text>
             </View>
-            <View style={styles.progressBarBackground}>
-              <View style={[styles.progressBarFill, {
-                width: `${Math.min((annualTotal / WALL_LIMIT) * 100, 100)}%`,
-                backgroundColor: (annualTotal / WALL_LIMIT) > 0.95 ? '#ff4444' : (annualTotal / WALL_LIMIT) > 0.8 ? '#ffbb33' : '#00C851'
-              }]} />
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${Math.min((annualTotal / WALL_LIMIT) * 100, 100)}%`, backgroundColor: (annualTotal / WALL_LIMIT) > 0.9 ? DESTRUCTIVE_COLOR : SUCCESS_COLOR }]} />
             </View>
-            <Text style={styles.wallPercent}>{((annualTotal / WALL_LIMIT) * 100).toFixed(1)}% 消化 (¥{annualTotal.toLocaleString()})</Text>
-          </View>
-        </View>
-
-        <Calendar
-          current={selectedDate}
-          onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
-          onMonthChange={(month: DateData) => setCurrentMonth(month.dateString.substring(0, 7))}
-          markingType={'multi-dot'}
-          markedDates={markedDates}
-          theme={{
-            todayTextColor: '#00adf5',
-            selectedDayBackgroundColor: '#00adf5',
-            arrowColor: '#00adf5',
-            monthTextColor: '#333',
-            textMonthFontWeight: 'bold',
-          }}
-        />
-
-        <View style={styles.listContainer}>
-          <View style={styles.listHeaderContainer}>
-            <Text style={styles.listHeader}>
-              {format(parseISO(selectedDate), 'M月d日 (E)', { locale: ja })} の予定
-            </Text>
-            <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButton}>
-              <Ionicons name="add" size={24} color="#fff" />
-              <Text style={styles.addButtonText}> 追加</Text>
-            </TouchableOpacity>
+            <Text style={styles.wallStats}>{((annualTotal / WALL_LIMIT) * 100).toFixed(1)}% 消化 (¥{annualTotal.toLocaleString()})</Text>
           </View>
 
-          <FlatList
-            data={selectedShifts}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item, index }) => (
-              <Swipeable
-                renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, index, item)}
-                overshootRight={false}
-                onSwipeableOpen={(direction) => {
-                  if (direction === 'right') {
-                    confirmDeleteShift(item);
-                  }
-                }}
-              >
-                <View style={[styles.card, { borderLeftColor: item.color || (item.type === 'Tutor' ? 'red' : 'blue') }]}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={styles.cardWage}>¥{item.salary.toLocaleString()}</Text>
-                      <TouchableOpacity onPress={() => openEditModal(item)} style={styles.editButtonInternal}>
-                        <Ionicons name="pencil-outline" size={20} color="#00adf5" />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => confirmDeleteShift(item)} style={styles.deleteButtonInternal}>
-                        <Ionicons name="trash-outline" size={20} color="#ff4444" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <Text style={styles.cardTime}>{item.startTime} - {item.endTime}</Text>
-                  <Text style={styles.hintText}>◀ スライドアクション</Text>
-                </View>
-              </Swipeable>
-            )}
-            ListEmptyComponent={<Text style={styles.emptyText}>予定はありません</Text>}
-          />
-        </View>
-
-        {/* Edit Modal */}
-        <Modal
-          animationType="fade"
-          transparent={true}
-          visible={editModalVisible}
-          onRequestClose={() => setEditModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalView}>
-              <Text style={styles.modalTitle}>金額を修正</Text>
-              <Text style={{ marginBottom: 10 }}>{shiftToEdit?.title} ({shiftToEdit?.date})</Text>
-              <TextInput
-                style={styles.input}
-                value={editAmount}
-                onChangeText={setEditAmount}
-                keyboardType="numeric"
-                placeholder="新しい金額"
-              />
-              <View style={styles.modalButtons}>
-                <Button title="キャンセル" onPress={() => setEditModalVisible(false)} color="gray" />
-                <Button title="保存" onPress={saveEdit} />
+          {/* Menu Grid */}
+          <View style={styles.menuGrid}>
+            <TouchableOpacity style={styles.menuButton} onPress={() => setModalVisible(true)}>
+              <View style={[styles.menuIconContainer, { backgroundColor: '#E1F5FE' }]}>
+                <Ionicons name="add" size={24} color={PRIMARY_COLOR} />
               </View>
-            </View>
+              <Text style={styles.menuText}>追加</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuButton} onPress={() => { setRangeStart(format(new Date(), 'yyyy-MM-01')); setRangeEnd(format(new Date(), 'yyyy-MM-dd')); setRangeTotal(null); setRangeModalVisible(true); }}>
+              <View style={[styles.menuIconContainer, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="calculator-outline" size={24} color={SUCCESS_COLOR} />
+              </View>
+              <Text style={styles.menuText}>期間集計</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuButton} onPress={() => setZukanModalVisible(true)}>
+              <View style={[styles.menuIconContainer, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="book-outline" size={24} color="#FF9800" />
+              </View>
+              <Text style={styles.menuText}>図鑑</Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
 
-        {/* Add Shift Modal */}
+          {/* Calendar Card */}
+          <View style={styles.card}>
+            <Calendar
+              current={selectedDate}
+              onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
+              onMonthChange={(month: DateData) => setCurrentMonth(month.dateString.substring(0, 7))}
+              markedDates={markedDates}
+              markingType={'multi-dot'}
+              theme={{
+                backgroundColor: '#ffffff',
+                calendarBackground: '#ffffff',
+                textSectionTitleColor: '#b6c1cd',
+                selectedDayBackgroundColor: PRIMARY_COLOR,
+                selectedDayTextColor: '#ffffff',
+                todayTextColor: PRIMARY_COLOR,
+                dayTextColor: '#2d4150',
+                textDisabledColor: '#d9e1e8',
+                dotColor: PRIMARY_COLOR,
+                selectedDotColor: '#ffffff',
+                arrowColor: PRIMARY_COLOR,
+                monthTextColor: TEXT_COLOR,
+                textDayFontWeight: '300',
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: '300',
+                textDayFontSize: 16,
+                textMonthFontSize: 16,
+                textDayHeaderFontSize: 14
+              }}
+            />
+          </View>
+
+          {/* Schedule List */}
+          <Text style={styles.sectionHeader}>{format(parseISO(selectedDate), 'M月d日 (E)', { locale: ja })} の予定</Text>
+          <View style={[styles.card, { padding: 0 }]}>
+            {selectedShifts.length === 0 ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Text style={{ color: SUBTEXT_COLOR }}>予定はありません</Text>
+              </View>
+            ) : (
+              selectedShifts.map((item, index) => (
+                <Swipeable key={index} renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, index, item)}>
+                  <View style={[styles.listItem, index !== selectedShifts.length - 1 && styles.listItemSeparator]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.itemTitle}>{item.title}</Text>
+                      <Text style={styles.itemTime}>{item.startTime} - {item.endTime} {item.location ? `• ${item.location}` : ''}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => openEditModal(item)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.itemPrice}>¥{item.salary.toLocaleString()}</Text>
+                      <Ionicons name="chevron-forward" size={16} color="#C7C7CC" style={{ marginLeft: 5 }} />
+                    </TouchableOpacity>
+                  </View>
+                </Swipeable>
+              ))
+            )}
+          </View>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+
+        {/* --- Modals (Simplified for Clean UI) --- */}
+
+        {/* Add Modal */}
         <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalView}>
-              <Text style={styles.modalTitle}>予定を追加 ({selectedDate})</Text>
-
-              {/* Type Selection */}
-              <View style={styles.typeSelector}>
-                <TouchableOpacity style={[styles.typeButton, newShiftType === 'Tutor' && styles.typeButtonSelected]} onPress={() => setNewShiftType('Tutor')}>
-                  <Text style={[styles.typeButtonText, newShiftType === 'Tutor' && styles.typeButtonTextSelected]}>手入力</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.typeButton, newShiftType === 'MyBasket' && styles.typeButtonSelected]} onPress={() => setNewShiftType('MyBasket')}>
-                  <Text style={[styles.typeButtonText, newShiftType === 'MyBasket' && styles.typeButtonTextSelected]}>まいばす</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.typeButton, newShiftType === 'Other' && styles.typeButtonSelected]} onPress={() => setNewShiftType('Other')}>
-                  <Text style={[styles.typeButtonText, newShiftType === 'Other' && styles.typeButtonTextSelected]}>時給計算</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Conditional Intervals */}
-              {newShiftType === 'Tutor' && (
-                <>
-                  <TextInput style={styles.input} placeholder="タイトル (例: 家庭教師)" value={newShiftTitle} onChangeText={setNewShiftTitle} />
-                  <TextInput style={styles.input} placeholder="金額 (例: 4000)" value={newShiftSalary} onChangeText={setNewShiftSalary} keyboardType="numeric" />
-                </>
-              )}
-
-              {newShiftType === 'MyBasket' && (
-                <>
-                  <Text style={styles.label}>タイトル: まいばす (固定)</Text>
-                  <Text style={styles.label}>金額: ¥{parseInt(newShiftSalary || '0').toLocaleString()} (自動計算)</Text>
-                </>
-              )}
-
-              {newShiftType === 'Other' && (
-                <>
-                  <TextInput style={styles.input} placeholder="タイトル (例: バイト)" value={newShiftTitle} onChangeText={setNewShiftTitle} />
-                  <TextInput style={styles.input} placeholder="時給 (例: 1200)" value={newHourlyWage} onChangeText={setNewHourlyWage} keyboardType="numeric" />
-                  <Text style={styles.label}>金額: ¥{parseInt(newShiftSalary || '0').toLocaleString()} (自動計算)</Text>
-                </>
-              )}
-
-              {/* Color Selection */}
-              <View style={styles.colorSelector}>
-                {COLORS.map(color => (
-                  <TouchableOpacity
-                    key={color}
-                    style={[styles.colorButton, { backgroundColor: color }, selectedColor === color && styles.colorButtonSelected]}
-                    onPress={() => setSelectedColor(color)}
-                  />
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalHeader}>予定を追加</Text>
+              <View style={styles.segmentedControl}>
+                {(['Tutor', 'MyBasket', 'Other'] as const).map(type => (
+                  <TouchableOpacity key={type} style={[styles.segment, newShiftType === type && styles.segmentActive]} onPress={() => setNewShiftType(type)}>
+                    <Text style={[styles.segmentText, newShiftType === type && styles.segmentTextActive]}>
+                      {type === 'Tutor' ? '入力' : type === 'MyBasket' ? 'まいばす' : '時給'}
+                    </Text>
+                  </TouchableOpacity>
                 ))}
               </View>
 
+              {newShiftType !== 'MyBasket' && (
+                <TextInput style={styles.input} placeholder="タイトル" value={newShiftTitle} onChangeText={setNewShiftTitle} placeholderTextColor={SUBTEXT_COLOR} />
+              )}
+              {newShiftType === 'Other' && (
+                <TextInput style={styles.input} placeholder="時給" value={newHourlyWage} onChangeText={setNewHourlyWage} keyboardType="numeric" placeholderTextColor={SUBTEXT_COLOR} />
+              )}
+              {newShiftType !== 'Other' && (
+                <TextInput style={styles.input} placeholder="金額" value={newShiftSalary} onChangeText={setNewShiftSalary} keyboardType="numeric" editable={newShiftType === 'Tutor'} placeholderTextColor={SUBTEXT_COLOR} />
+              )}
+
               <View style={styles.row}>
                 {Platform.OS === 'web' ? (
-                  <View style={[styles.input, { flex: 1, marginRight: 5, justifyContent: 'center' }]}>
-                    {/* @ts-ignore */}
-                    {React.createElement('input', {
-                      type: 'time',
-                      value: newShiftStart,
-                      onChange: (e: any) => setNewShiftStart(e.target.value),
-                      style: { width: '100%', height: '100%', fontSize: 16, border: 'none', background: 'transparent' }
-                    })}
-                  </View>
+                  <input type="time" value={newShiftStart} onChange={(e) => setNewShiftStart(e.target.value)} style={styles.webInput} />
                 ) : (
-                  <TouchableOpacity onPress={() => setShowStartTimePicker(true)} style={[styles.input, { flex: 1, marginRight: 5, justifyContent: 'center' }]}>
-                    <Text style={styles.inputText}>{newShiftStart || "開始"}</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowStartTimePicker(true)} style={styles.dateButton}><Text>{newShiftStart}</Text></TouchableOpacity>
                 )}
-
+                <Text style={{ marginHorizontal: 10 }}>→</Text>
                 {Platform.OS === 'web' ? (
-                  <View style={[styles.input, { flex: 1, marginLeft: 5, justifyContent: 'center' }]}>
-                    {/* @ts-ignore */}
-                    {React.createElement('input', {
-                      type: 'time',
-                      value: newShiftEnd,
-                      onChange: (e: any) => setNewShiftEnd(e.target.value),
-                      style: { width: '100%', height: '100%', fontSize: 16, border: 'none', background: 'transparent' }
-                    })}
-                  </View>
+                  <input type="time" value={newShiftEnd} onChange={(e) => setNewShiftEnd(e.target.value)} style={styles.webInput} />
                 ) : (
-                  <TouchableOpacity onPress={() => setShowEndTimePicker(true)} style={[styles.input, { flex: 1, marginLeft: 5, justifyContent: 'center' }]}>
-                    <Text style={styles.inputText}>{newShiftEnd || "終了"}</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowEndTimePicker(true)} style={styles.dateButton}><Text>{newShiftEnd}</Text></TouchableOpacity>
                 )}
               </View>
 
-              {Platform.OS !== 'web' && showStartTimePicker && (
-                <DateTimePicker
-                  value={getTimeDate(newShiftStart)}
-                  mode="time"
-                  is24Hour={true}
-                  display="default"
-                  onChange={onStartTimeChange}
-                />
-              )}
-              {Platform.OS !== 'web' && showEndTimePicker && (
-                <DateTimePicker
-                  value={getTimeDate(newShiftEnd)}
-                  mode="time"
-                  is24Hour={true}
-                  display="default"
-                  onChange={onEndTimeChange}
-                />
-              )}
+              <Button title="追加" onPress={handleAddShift} />
+              <Button title="キャンセル" color={DESTRUCTIVE_COLOR} onPress={() => setModalVisible(false)} />
 
-              {/* Location Input (Optional) */}
-              <TextInput
-                style={styles.input}
-                placeholder="場所 (任意)"
-                value={newShiftLocation}
-                onChangeText={setNewShiftLocation}
-              />
-
-              <View style={styles.modalButtons}>
-                <Button title="キャンセル" onPress={() => setModalVisible(false)} color="gray" />
-                <Button title="追加" onPress={handleAddShift} />
-              </View>
+              {/* Datetime pickers logic... reused */}
+              {showStartTimePicker && <DateTimePicker value={getTimeDate(newShiftStart)} mode="time" onChange={onStartTimeChange} />}
+              {showEndTimePicker && <DateTimePicker value={getTimeDate(newShiftEnd)} mode="time" onChange={onEndTimeChange} />}
             </View>
           </View>
         </Modal>
 
-        {/* Range Calculation Modal */}
-        <Modal animationType="fade" transparent={true} visible={rangeModalVisible} onRequestClose={() => setRangeModalVisible(false)}>
+        {/* Range Modal */}
+        <Modal animationType="slide" transparent={true} visible={rangeModalVisible} onRequestClose={() => setRangeModalVisible(false)}>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalView}>
-              <Text style={styles.modalTitle}>期間集計</Text>
-              <Text style={styles.label}>開始日 (YYYY-MM-DD)</Text>
-              {Platform.OS === 'web' ? (
-                <View style={[styles.input, { justifyContent: 'center' }]}>
-                  {/* @ts-ignore */}
-                  {React.createElement('input', {
-                    type: 'date',
-                    value: rangeStart,
-                    onChange: (e: any) => setRangeStart(e.target.value),
-                    style: { width: '100%', height: '100%', fontSize: 16, border: 'none', background: 'transparent' }
-                  })}
-                </View>
-              ) : (
-                <TouchableOpacity onPress={() => setShowRangeStartDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
-                  <Text style={styles.inputText}>{rangeStart || "タップして選択"}</Text>
-                </TouchableOpacity>
-              )}
-              <Text style={styles.label}>終了日 (YYYY-MM-DD)</Text>
-              {Platform.OS === 'web' ? (
-                <View style={[styles.input, { justifyContent: 'center' }]}>
-                  {/* @ts-ignore */}
-                  {React.createElement('input', {
-                    type: 'date',
-                    value: rangeEnd,
-                    onChange: (e: any) => setRangeEnd(e.target.value),
-                    style: { width: '100%', height: '100%', fontSize: 16, border: 'none', background: 'transparent' }
-                  })}
-                </View>
-              ) : (
-                <TouchableOpacity onPress={() => setShowRangeEndDatePicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
-                  <Text style={styles.inputText}>{rangeEnd || "タップして選択"}</Text>
-                </TouchableOpacity>
-              )}
-
-              {Platform.OS !== 'web' && showRangeStartDatePicker && (
-                <DateTimePicker
-                  value={getDateObj(rangeStart)}
-                  mode="date"
-                  display="default"
-                  onChange={onRangeStartDateChange}
-                />
-              )}
-              {Platform.OS !== 'web' && showRangeEndDatePicker && (
-                <DateTimePicker
-                  value={getDateObj(rangeEnd)}
-                  mode="date"
-                  display="default"
-                  onChange={onRangeEndDateChange}
-                />
-              )}
-
-              <Button title="計算する" onPress={handleRangeCalculation} />
-
-              {rangeTotal !== null && (
-                <View style={{ marginTop: 20, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 16 }}>期間合計:</Text>
-                  <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#00adf5' }}>¥{rangeTotal.toLocaleString()}</Text>
-                </View>
-              )}
-
-              <View style={{ marginTop: 20 }}>
-                <Button title="閉じる" onPress={() => setRangeModalVisible(false)} color="gray" />
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalHeader}>期間集計</Text>
+              <View style={styles.row}>
+                {Platform.OS === 'web' ? (<input type="date" value={rangeStart} onChange={e => setRangeStart(e.target.value)} style={styles.webInput} />) :
+                  <TouchableOpacity onPress={() => setShowRangeStartDatePicker(true)} style={styles.dateButton}><Text>{rangeStart || "開始"}</Text></TouchableOpacity>}
+                <Text> ~ </Text>
+                {Platform.OS === 'web' ? (<input type="date" value={rangeEnd} onChange={e => setRangeEnd(e.target.value)} style={styles.webInput} />) :
+                  <TouchableOpacity onPress={() => setShowRangeEndDatePicker(true)} style={styles.dateButton}><Text>{rangeEnd || "終了"}</Text></TouchableOpacity>}
               </View>
+              <Button title="計算" onPress={handleRangeCalculation} />
+              {rangeTotal !== null && <Text style={styles.heroAmount}>¥{rangeTotal.toLocaleString()}</Text>}
+              <Button title="閉じる" color={SUBTEXT_COLOR} onPress={() => setRangeModalVisible(false)} />
+              {showRangeStartDatePicker && <DateTimePicker value={getDateObj(rangeStart)} mode="date" onChange={onRangeStartDateChange} />}
+              {showRangeEndDatePicker && <DateTimePicker value={getDateObj(rangeEnd)} mode="date" onChange={onRangeEndDateChange} />}
             </View>
           </View>
         </Modal>
 
-        {/* Baito Zukan Modal */}
-        <Modal animationType="slide" transparent={false} visible={zukanModalVisible} onRequestClose={() => setZukanModalVisible(false)}>
+        {/* Zukan Modal */}
+        <Modal animationType="slide" visible={zukanModalVisible} onRequestClose={() => setZukanModalVisible(false)}>
           <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-              <Text style={styles.modalTitle}>バイト図鑑 (勤務地コレクション)</Text>
-              <TouchableOpacity onPress={() => setZukanModalVisible(false)} style={styles.closeButton}>
-                <Text style={styles.closeButtonText}>閉じる</Text>
-              </TouchableOpacity>
+            <View style={styles.modalHeaderPage}>
+              <Text style={styles.modalHeader}>バイト図鑑</Text>
+              <Button title="閉じる" onPress={() => setZukanModalVisible(false)} />
             </View>
             <FlatList
               data={discoveredLocations}
-              keyExtractor={(item) => item.name}
+              keyExtractor={item => item.name}
               numColumns={2}
-              contentContainerStyle={{ padding: 10 }}
+              contentContainerStyle={{ padding: 15 }}
               renderItem={({ item }) => (
-                <View style={[styles.zukanItem, { borderColor: getLevelColor(item.count), borderWidth: 2 }]}>
-                  <View style={[styles.zukanIcon, { backgroundColor: getStringColor(item.name) }]}>
-                    <Text style={styles.zukanIconText}>{item.name.substring(0, 1)}</Text>
+                <View style={styles.zukanItem}>
+                  <View style={styles.zukanIcon}>
+                    <Text style={{ fontSize: 24, color: '#fff' }}>{item.name[0]}</Text>
                   </View>
-                  <Text style={styles.zukanName}>{item.name}</Text>
-                  <View style={styles.zukanBadgeContainer}>
-                    <Text style={[styles.zukanRank, { color: getLevelColor(item.count) }]}>{getRankTitle(item.count)}</Text>
-                    <Text style={styles.zukanCount}>Lv.{item.count}</Text>
-                  </View>
+                  <Text style={styles.zukanText}>{item.name}</Text>
+                  <Text style={styles.zukanLevel}>Lv.{item.count}</Text>
                 </View>
               )}
-              ListEmptyComponent={<Text style={styles.emptyText}>まだデータがありません</Text>}
             />
-            <View style={{ padding: 20, borderTopWidth: 1, borderTopColor: '#ddd', alignItems: 'center' }}>
-              <Button title="削除した予定を復元する" onPress={handleResetExclusions} color="#ff4444" />
-              <Text style={{ color: '#aaa', marginTop: 10 }}>v1.0.1</Text>
-            </View>
+            <Button title="データ復元" color={DESTRUCTIVE_COLOR} onPress={handleResetExclusions} />
           </SafeAreaView>
         </Modal>
 
-        {/* Delete Confirmation Modal */}
-        <Modal
-          animationType="fade"
-          transparent={true}
-          visible={deleteModalVisible}
-          onRequestClose={() => setDeleteModalVisible(false)}
-        >
+        {/* Delete Modal */}
+        <Modal animationType="fade" transparent={true} visible={deleteModalVisible} onRequestClose={() => setDeleteModalVisible(false)}>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalView}>
-              <Text style={styles.modalTitle}>削除確認</Text>
-              <Text style={{ marginBottom: 20, textAlign: 'center' }}>この予定を削除しますか？{'\n'}({shiftToDelete?.title})</Text>
-              <View style={styles.modalButtons}>
-                <Button title="キャンセル" onPress={() => setDeleteModalVisible(false)} color="gray" />
-                <Button title="削除する" onPress={performDelete} color="#dd2c00" />
-              </View>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalHeader}>削除しますか？</Text>
+              <Button title="削除" color={DESTRUCTIVE_COLOR} onPress={performDelete} />
+              <Button title="キャンセル" onPress={() => setDeleteModalVisible(false)} />
             </View>
           </View>
         </Modal>
+
+        {/* Edit Modal */}
+        <Modal animationType="fade" transparent={true} visible={editModalVisible} onRequestClose={() => setEditModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalHeader}>金額修正</Text>
+              <TextInput style={styles.input} value={editAmount} onChangeText={setEditAmount} keyboardType="numeric" />
+              <Button title="保存" onPress={saveEdit} />
+              <Button title="キャンセル" onPress={() => setEditModalVisible(false)} />
+            </View>
+          </View>
+        </Modal>
+
       </SafeAreaView>
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { padding: 20, backgroundColor: '#fff', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#ddd' },
-  monthText: { fontSize: 16, color: '#666' },
-  totalAmount: { fontSize: 32, fontWeight: 'bold', color: '#333', marginTop: 5 },
-  listContainer: { flex: 1, padding: 20 },
-  listHeaderContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  listHeader: { fontSize: 18, fontWeight: '600', color: '#444' },
-  addButton: { backgroundColor: '#00adf5', paddingHorizontal: 15, paddingVertical: 5, borderRadius: 20 },
-  addButtonText: { color: '#fff', fontWeight: 'bold' },
-  rangeButton: { backgroundColor: '#FFA500', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15 },
-  rangeButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  card: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginBottom: 10, borderLeftWidth: 5, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-  cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  cardWage: { fontSize: 16, fontWeight: 'bold', color: '#2e8b57' },
-  cardTime: { fontSize: 14, color: '#666' },
-  hintText: { fontSize: 10, color: '#999', marginTop: 5, textAlign: 'right' },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 20 },
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalView: { width: '80%', backgroundColor: 'white', borderRadius: 20, padding: 20, alignItems: 'stretch', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 5 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
-  input: { height: 40, borderColor: '#ddd', borderWidth: 1, marginBottom: 15, paddingHorizontal: 10, borderRadius: 5, justifyContent: 'center' },
-  inputText: { fontSize: 16, color: '#333' },
-  row: { flexDirection: 'row', marginBottom: 15 },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-around' },
-  deleteButtonSmall: { backgroundColor: '#ffcccc', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  deleteButtonText: { color: '#ff3333', fontSize: 12, fontWeight: 'bold' },
-  deleteAction: { backgroundColor: '#dd2c00', justifyContent: 'center', alignItems: 'flex-end', marginBottom: 10, marginTop: 0, borderRadius: 0, width: 80, height: '100%' },
-  deleteActionText: { color: 'white', fontWeight: 'bold', padding: 20 },
-  cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5 },
-  typeSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 15 },
-  typeButton: { paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#00adf5', borderRadius: 20, marginHorizontal: 5 },
-  typeButtonSelected: { backgroundColor: '#00adf5' },
-  typeButtonText: { color: '#00adf5', fontWeight: 'bold' },
-  typeButtonTextSelected: { color: '#fff' },
-  label: { marginBottom: 10, fontSize: 16, fontWeight: 'bold', color: '#555' },
-  colorSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 15 },
-  colorButton: { width: 30, height: 30, borderRadius: 15, marginHorizontal: 5, borderWidth: 2, borderColor: 'transparent' },
-  colorButtonSelected: { borderColor: '#333', transform: [{ scale: 1.2 }] },
-  // Wall Meter Styles
-  wallContainer: { width: '100%', marginTop: 15, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8 },
-  wallHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  wallTitle: { fontWeight: 'bold', color: '#555' },
-  wallRemaining: { fontWeight: 'bold', color: '#555' },
-  progressBarBackground: { height: 10, backgroundColor: '#e0e0e0', borderRadius: 5, overflow: 'hidden' },
-  progressBarFill: { height: '100%', borderRadius: 5 },
-  wallPercent: { textAlign: 'center', fontSize: 12, color: '#777', marginTop: 3 },
-  // Zukan Styles
-  zukanButton: { backgroundColor: '#9C27B0', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15, marginLeft: 5 },
-  zukanButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  zukanItem: { flex: 1, margin: 5, backgroundColor: '#fff', borderRadius: 10, padding: 15, alignItems: 'center', elevation: 2 },
-  zukanIcon: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-  zukanIconText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  zukanName: { fontWeight: 'bold', fontSize: 13, textAlign: 'center', marginBottom: 5, height: 35 },
-  zukanBadgeContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  zukanRank: { fontSize: 10, fontWeight: 'bold', marginRight: 5 },
-  zukanCount: { color: '#555', fontSize: 12, fontWeight: 'bold' },
-  closeButton: { padding: 5 },
-  closeButtonText: { color: '#00adf5', fontWeight: 'bold' },
-  deleteButtonInternal: { marginLeft: 10, padding: 5 },
-  editButtonInternal: { marginLeft: 15, padding: 5 },
+  container: { flex: 1, backgroundColor: BG_COLOR },
+  scrollContent: { padding: 16 },
+
+  heroSection: { alignItems: 'center', marginBottom: 20, marginTop: 10 },
+  heroMonth: { fontSize: 16, color: SUBTEXT_COLOR, fontWeight: '600', marginBottom: 4 },
+  heroAmount: { fontSize: 40, fontWeight: '700', color: TEXT_COLOR, letterSpacing: -1 },
+
+  card: { backgroundColor: CARD_BG, borderRadius: 16, padding: 16, marginBottom: 16, ...SHADOW_STYLE },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  cardTitle: { fontSize: 16, fontWeight: '600', color: TEXT_COLOR },
+
+  progressBarBg: { height: 8, backgroundColor: '#E5E5EA', borderRadius: 4, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 4 },
+  wallStats: { fontSize: 12, color: SUBTEXT_COLOR, marginTop: 8, textAlign: 'right' },
+
+  menuGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  menuButton: { width: '31%', backgroundColor: CARD_BG, borderRadius: 16, padding: 12, alignItems: 'center', ...SHADOW_STYLE },
+  menuIconContainer: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  menuText: { fontSize: 12, fontWeight: '500', color: TEXT_COLOR },
+
+  sectionHeader: { fontSize: 13, color: SUBTEXT_COLOR, fontWeight: '600', marginBottom: 8, marginLeft: 16, textTransform: 'uppercase' },
+
+  listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
+  listItemSeparator: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#C6C6C8', marginLeft: 16 },
+  itemTitle: { fontSize: 16, fontWeight: '500', color: TEXT_COLOR, marginBottom: 4 },
+  itemTime: { fontSize: 13, color: SUBTEXT_COLOR },
+  itemPrice: { fontSize: 16, fontWeight: '600', color: TEXT_COLOR },
+
+  deleteAction: { backgroundColor: DESTRUCTIVE_COLOR, justifyContent: 'center', alignItems: 'center', width: 80, height: '100%' },
+
+  // Modals
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContainer: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20, width: '100%', maxWidth: 400, alignItems: 'center', ...SHADOW_STYLE },
+  modalHeader: { fontSize: 18, fontWeight: '600', marginBottom: 20 },
+  modalHeaderPage: { padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff' },
+
+  input: { width: '100%', height: 44, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, marginBottom: 16, fontSize: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#C6C6C8' },
+  // @ts-ignore
+  webInput: { width: '100%', height: 40, border: '1px solid #C6C6C8', borderRadius: 8, padding: 8, marginBottom: 16, fontSize: 16 },
+
+  dateButton: { backgroundColor: '#fff', padding: 10, borderRadius: 8, width: 100, alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+
+  segmentedControl: { flexDirection: 'row', backgroundColor: '#E5E5EA', borderRadius: 8, padding: 2, marginBottom: 20, width: '100%' },
+  segment: { flex: 1, paddingVertical: 6, alignItems: 'center', borderRadius: 6 },
+  segmentActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1, elevation: 1 },
+  segmentText: { fontSize: 13, fontWeight: '500' },
+  segmentTextActive: { fontWeight: '600' },
+
+  // Zukan
+  zukanItem: { flex: 1, backgroundColor: '#fff', margin: 8, borderRadius: 12, padding: 16, alignItems: 'center', ...SHADOW_STYLE },
+  zukanIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: PRIMARY_COLOR, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  zukanText: { fontWeight: '600', fontSize: 14, marginBottom: 4 },
+  zukanLevel: { fontSize: 12, color: SUBTEXT_COLOR }
 });
