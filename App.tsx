@@ -190,6 +190,22 @@ export default function App() {
 
   const selectedShifts = allShifts.filter(s => s.date === selectedDate);
 
+  // Upcoming Shifts (Next 7 days)
+  const upcomingShifts = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+
+    return allShifts
+      .filter(s => {
+        const d = parseISO(s.date);
+        return d >= today && d <= nextWeek;
+      })
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
+      .slice(0, 5);
+  }, [allShifts]);
+
   // Handlers
   const handleAddShift = async () => {
     if (!newShiftTitle || !newShiftSalary) { Alert.alert('エラー', 'タイトルと金額を入力してください'); return; }
@@ -304,25 +320,58 @@ export default function App() {
             <Text style={styles.wallStats}>{((annualTotal / WALL_LIMIT) * 100).toFixed(1)}% 消化 (¥{annualTotal.toLocaleString()})</Text>
           </View>
 
-          {/* Menu Grid */}
-          <View style={styles.menuGrid}>
-            <TouchableOpacity style={styles.menuButton} onPress={() => setModalVisible(true)}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#E1F5FE' }]}>
-                <Ionicons name="add" size={24} color={PRIMARY_COLOR} />
+
+          {/* Weekly Schedule Card (NEW) */}
+          <Text style={styles.sectionHeader}>直近の予定</Text>
+          <View style={[styles.card, { padding: 0 }]}>
+            {upcomingShifts.length === 0 ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Text style={{ color: SUBTEXT_COLOR }}>直近の予定はありません</Text>
               </View>
-              <Text style={styles.menuText}>追加</Text>
+            ) : (
+              upcomingShifts.map((item, index) => (
+                <View key={index} style={[styles.listItem, index !== upcomingShifts.length - 1 && styles.listItemSeparator]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', width: 50 }}>
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ fontSize: 10, color: '#FF3B30', fontWeight: '600' }}>{format(parseISO(item.date), 'MMM', { locale: ja })}</Text>
+                      <Text style={{ fontSize: 18, color: TEXT_COLOR, fontWeight: '500' }}>{format(parseISO(item.date), 'd')}</Text>
+                    </View>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.itemTime}>{item.startTime} - {item.endTime} <Text style={{ color: SUBTEXT_COLOR }}>{item.location ? `• ${item.location}` : ''}</Text></Text>
+                  </View>
+                  <Text style={styles.itemPrice}>¥{item.salary.toLocaleString()}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          {/* Settings / Actions List (Replaced Menu Grid) */}
+          <Text style={styles.sectionHeader}>メニュー</Text>
+          <View style={[styles.card, { padding: 0 }]}>
+            <TouchableOpacity style={styles.listItem} onPress={() => setModalVisible(true)}>
+              <View style={[styles.menuIconContainerList, { backgroundColor: PRIMARY_COLOR }]}>
+                <Ionicons name="add" size={20} color="#fff" />
+              </View>
+              <Text style={[styles.itemTitle, { flex: 1, marginBottom: 0, marginLeft: 12 }]}>シフト追加</Text>
+              <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.menuButton} onPress={() => { setRangeStart(format(new Date(), 'yyyy-MM-01')); setRangeEnd(format(new Date(), 'yyyy-MM-dd')); setRangeTotal(null); setRangeModalVisible(true); }}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name="calculator-outline" size={24} color={SUCCESS_COLOR} />
+            <View style={styles.listItemSeparator} />
+            <TouchableOpacity style={styles.listItem} onPress={() => { setRangeStart(format(new Date(), 'yyyy-MM-01')); setRangeEnd(format(new Date(), 'yyyy-MM-dd')); setRangeTotal(null); setRangeModalVisible(true); }}>
+              <View style={[styles.menuIconContainerList, { backgroundColor: SUCCESS_COLOR }]}>
+                <Ionicons name="calculator-outline" size={20} color="#fff" />
               </View>
-              <Text style={styles.menuText}>期間集計</Text>
+              <Text style={[styles.itemTitle, { flex: 1, marginBottom: 0, marginLeft: 12 }]}>期間集計</Text>
+              <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.menuButton} onPress={() => setZukanModalVisible(true)}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#FFF3E0' }]}>
-                <Ionicons name="book-outline" size={24} color="#FF9800" />
+            <View style={styles.listItemSeparator} />
+            <TouchableOpacity style={styles.listItem} onPress={() => setZukanModalVisible(true)}>
+              <View style={[styles.menuIconContainerList, { backgroundColor: '#FF9500' }]}>
+                <Ionicons name="book-outline" size={20} color="#fff" />
               </View>
-              <Text style={styles.menuText}>図鑑</Text>
+              <Text style={[styles.itemTitle, { flex: 1, marginBottom: 0, marginLeft: 12 }]}>バイト図鑑</Text>
+              <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
             </TouchableOpacity>
           </View>
 
@@ -480,6 +529,9 @@ export default function App() {
               )}
             />
             <Button title="データ復元" color={DESTRUCTIVE_COLOR} onPress={handleResetExclusions} />
+            <View style={{ alignItems: 'center', paddingBottom: 20 }}>
+              <Text style={{ color: SUBTEXT_COLOR, fontSize: 12, marginTop: 10 }}>v1.0.2</Text>
+            </View>
           </SafeAreaView>
         </Modal>
 
@@ -516,29 +568,26 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16 },
 
   heroSection: { alignItems: 'center', marginBottom: 20, marginTop: 10 },
-  heroMonth: { fontSize: 16, color: SUBTEXT_COLOR, fontWeight: '600', marginBottom: 4 },
-  heroAmount: { fontSize: 40, fontWeight: '700', color: TEXT_COLOR, letterSpacing: -1 },
+  heroMonth: { fontSize: 14, color: SUBTEXT_COLOR, fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  heroAmount: { fontSize: 44, fontWeight: '700', color: TEXT_COLOR, letterSpacing: -1.5 },
 
   card: { backgroundColor: CARD_BG, borderRadius: 16, padding: 16, marginBottom: 16, ...SHADOW_STYLE },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: TEXT_COLOR },
 
-  progressBarBg: { height: 8, backgroundColor: '#E5E5EA', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: '100%', borderRadius: 4 },
-  wallStats: { fontSize: 12, color: SUBTEXT_COLOR, marginTop: 8, textAlign: 'right' },
+  progressBarBg: { height: 6, backgroundColor: '#E5E5EA', borderRadius: 3, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 3 },
+  wallStats: { fontSize: 13, color: SUBTEXT_COLOR, marginTop: 8, textAlign: 'right', fontVariant: ['tabular-nums'] },
 
-  menuGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  menuButton: { width: '31%', backgroundColor: CARD_BG, borderRadius: 16, padding: 12, alignItems: 'center', ...SHADOW_STYLE },
-  menuIconContainer: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  menuText: { fontSize: 12, fontWeight: '500', color: TEXT_COLOR },
+  menuIconContainerList: { width: 30, height: 30, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
 
   sectionHeader: { fontSize: 13, color: SUBTEXT_COLOR, fontWeight: '600', marginBottom: 8, marginLeft: 16, textTransform: 'uppercase' },
 
   listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
   listItemSeparator: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#C6C6C8', marginLeft: 16 },
-  itemTitle: { fontSize: 16, fontWeight: '500', color: TEXT_COLOR, marginBottom: 4 },
-  itemTime: { fontSize: 13, color: SUBTEXT_COLOR },
-  itemPrice: { fontSize: 16, fontWeight: '600', color: TEXT_COLOR },
+  itemTitle: { fontSize: 17, fontWeight: '400', color: TEXT_COLOR, marginBottom: 4 },
+  itemTime: { fontSize: 14, color: SUBTEXT_COLOR },
+  itemPrice: { fontSize: 17, fontWeight: '400', color: TEXT_COLOR, fontVariant: ['tabular-nums'] },
 
   deleteAction: { backgroundColor: DESTRUCTIVE_COLOR, justifyContent: 'center', alignItems: 'center', width: 80, height: '100%' },
 
