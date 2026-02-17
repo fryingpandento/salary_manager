@@ -421,6 +421,49 @@ export default function App() {
 
         {/* --- Modals (Simplified for Clean UI) --- */}
 
+        {/* Settings Modal */}
+        <Modal animationType="slide" visible={settingsModalVisible} onRequestClose={() => setSettingsModalVisible(false)} presentationStyle="pageSheet">
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
+            <View style={styles.modalHeaderPage}>
+              <Text style={styles.modalHeader}>メニュー</Text>
+              <Button title="閉じる" onPress={() => setSettingsModalVisible(false)} />
+            </View>
+            <View style={{ padding: 16 }}>
+              <View style={styles.card}>
+                <TouchableOpacity onPress={() => { setSettingsModalVisible(false); setTimeout(() => setModalVisible(true), 500); }} style={styles.listItem}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={[styles.menuIconContainerList, { backgroundColor: PRIMARY_COLOR }]}>
+                      <Ionicons name="add" size={20} color="#fff" />
+                    </View>
+                    <Text style={[styles.itemTitle, { marginLeft: 12 }]}>シフト追加</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                </TouchableOpacity>
+                <View style={styles.listItemSeparator} />
+                <TouchableOpacity onPress={() => { setSettingsModalVisible(false); setTimeout(() => setRangeModalVisible(true), 500); }} style={styles.listItem}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={[styles.menuIconContainerList, { backgroundColor: '#34C759' }]}>
+                      <Ionicons name="calculator-outline" size={20} color="#fff" />
+                    </View>
+                    <Text style={[styles.itemTitle, { marginLeft: 12 }]}>期間集計</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                </TouchableOpacity>
+                <View style={styles.listItemSeparator} />
+                <TouchableOpacity onPress={() => { setSettingsModalVisible(false); setTimeout(() => setZukanModalVisible(true), 500); }} style={styles.listItem}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={[styles.menuIconContainerList, { backgroundColor: '#FF9500' }]}>
+                      <Ionicons name="book-outline" size={20} color="#fff" />
+                    </View>
+                    <Text style={[styles.itemTitle, { marginLeft: 12 }]}>バイト図鑑</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </Modal>
+
         {/* Add Modal */}
         <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
           <View style={styles.modalOverlay}>
