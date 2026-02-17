@@ -577,7 +577,7 @@ export default function App() {
               </TouchableOpacity>
             </View>
             <View style={{ alignItems: 'center', paddingBottom: 20 }}>
-              <Text style={{ color: SUBTEXT_COLOR, fontSize: 12, marginTop: 10 }}>v1.0.5</Text>
+              <Text style={{ color: SUBTEXT_COLOR, fontSize: 12, marginTop: 10 }}>v1.0.6</Text>
             </View>
           </SafeAreaView>
         </Modal>
@@ -587,8 +587,15 @@ export default function App() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <Text style={styles.modalHeader}>削除しますか？</Text>
-              <Button title="削除" color={DESTRUCTIVE_COLOR} onPress={performDelete} />
-              <Button title="キャンセル" onPress={() => setDeleteModalVisible(false)} />
+              <Text style={{ marginBottom: 20, color: SUBTEXT_COLOR }}>この操作は取り消せません。</Text>
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSecondary]} onPress={() => setDeleteModalVisible(false)}>
+                  <Text style={styles.modalBtnTextSecondary}>キャンセル</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnDestructive]} onPress={performDelete}>
+                  <Text style={styles.modalBtnText}>削除</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
