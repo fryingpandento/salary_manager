@@ -426,7 +426,9 @@ export default function App() {
           <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
             <View style={styles.modalHeaderPage}>
               <Text style={styles.modalHeader}>メニュー</Text>
-              <Button title="閉じる" onPress={() => setSettingsModalVisible(false)} />
+              <TouchableOpacity onPress={() => setSettingsModalVisible(false)} style={{ padding: 8 }}>
+                <Text style={{ color: PRIMARY_COLOR, fontSize: 17, fontWeight: '600' }}>閉じる</Text>
+              </TouchableOpacity>
             </View>
             <View style={{ padding: 16 }}>
               <View style={styles.card}>
@@ -502,8 +504,14 @@ export default function App() {
                 )}
               </View>
 
-              <Button title="追加" onPress={handleAddShift} />
-              <Button title="キャンセル" color={DESTRUCTIVE_COLOR} onPress={() => setModalVisible(false)} />
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSecondary]} onPress={() => setModalVisible(false)}>
+                  <Text style={styles.modalBtnTextSecondary}>キャンセル</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={handleAddShift}>
+                  <Text style={styles.modalBtnText}>追加</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Datetime pickers logic... reused */}
               {showStartTimePicker && <DateTimePicker value={getTimeDate(newShiftStart)} mode="time" onChange={onStartTimeChange} />}
@@ -524,9 +532,15 @@ export default function App() {
                 {Platform.OS === 'web' ? (<input type="date" value={rangeEnd} onChange={e => setRangeEnd(e.target.value)} style={styles.webInput} />) :
                   <TouchableOpacity onPress={() => setShowRangeEndDatePicker(true)} style={styles.dateButton}><Text>{rangeEnd || "終了"}</Text></TouchableOpacity>}
               </View>
-              <Button title="計算" onPress={handleRangeCalculation} />
-              {rangeTotal !== null && <Text style={styles.heroAmount}>¥{rangeTotal.toLocaleString()}</Text>}
-              <Button title="閉じる" color={SUBTEXT_COLOR} onPress={() => setRangeModalVisible(false)} />
+              {rangeTotal !== null && <Text style={[styles.heroAmount, { fontSize: 32, marginBottom: 20 }]}>¥{rangeTotal.toLocaleString()}</Text>}
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSecondary]} onPress={() => setRangeModalVisible(false)}>
+                  <Text style={styles.modalBtnTextSecondary}>閉じる</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={handleRangeCalculation}>
+                  <Text style={styles.modalBtnText}>計算</Text>
+                </TouchableOpacity>
+              </View>
               {showRangeStartDatePicker && <DateTimePicker value={getDateObj(rangeStart)} mode="date" onChange={onRangeStartDateChange} />}
               {showRangeEndDatePicker && <DateTimePicker value={getDateObj(rangeEnd)} mode="date" onChange={onRangeEndDateChange} />}
             </View>
@@ -538,7 +552,9 @@ export default function App() {
           <SafeAreaView style={styles.container}>
             <View style={styles.modalHeaderPage}>
               <Text style={styles.modalHeader}>バイト図鑑</Text>
-              <Button title="閉じる" onPress={() => setZukanModalVisible(false)} />
+              <TouchableOpacity onPress={() => setZukanModalVisible(false)} style={{ padding: 8 }}>
+                <Text style={{ color: PRIMARY_COLOR, fontSize: 17, fontWeight: '600' }}>閉じる</Text>
+              </TouchableOpacity>
             </View>
             <FlatList
               data={discoveredLocations}
@@ -555,9 +571,13 @@ export default function App() {
                 </View>
               )}
             />
-            <Button title="データ復元" color={DESTRUCTIVE_COLOR} onPress={handleResetExclusions} />
+            <View style={{ padding: 16 }}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnDestructive, { height: 44 }]} onPress={handleResetExclusions}>
+                <Text style={styles.modalBtnText}>データ復元（除外解除）</Text>
+              </TouchableOpacity>
+            </View>
             <View style={{ alignItems: 'center', paddingBottom: 20 }}>
-              <Text style={{ color: SUBTEXT_COLOR, fontSize: 12, marginTop: 10 }}>v1.0.2</Text>
+              <Text style={{ color: SUBTEXT_COLOR, fontSize: 12, marginTop: 10 }}>v1.0.5</Text>
             </View>
           </SafeAreaView>
         </Modal>
@@ -644,5 +664,14 @@ const styles = StyleSheet.create({
   zukanItem: { flex: 1, backgroundColor: '#fff', margin: 8, borderRadius: 12, padding: 16, alignItems: 'center', ...SHADOW_STYLE },
   zukanIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: PRIMARY_COLOR, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   zukanText: { fontWeight: '600', fontSize: 14, marginBottom: 4 },
-  zukanLevel: { fontSize: 12, color: SUBTEXT_COLOR }
+  zukanLevel: { fontSize: 12, color: SUBTEXT_COLOR },
+
+  // New Modal Styles
+  modalButtonRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 20, gap: 10 },
+  modalBtn: { flex: 1, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  modalBtnPrimary: { backgroundColor: PRIMARY_COLOR },
+  modalBtnDestructive: { backgroundColor: DESTRUCTIVE_COLOR },
+  modalBtnSecondary: { backgroundColor: '#E5E5EA' },
+  modalBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  modalBtnTextSecondary: { fontSize: 16, fontWeight: '600', color: TEXT_COLOR },
 });
