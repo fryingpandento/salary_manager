@@ -252,12 +252,12 @@ export default function App() {
     };
 
     // Supabase save
-    const addedShift = await addShiftToSupabase(newShift);
+    const { data: addedShift, error } = await addShiftToSupabase(newShift);
     if (addedShift) {
       setManualShifts(prev => [...prev, addedShift]); // Immediate update only
       Alert.alert('成功', 'Supabaseに保存しました');
     } else {
-      Alert.alert('エラー', 'Supabaseへの保存に失敗しました（設定を確認してください）');
+      Alert.alert('エラー', `保存失敗: ${error}`);
     }
     setModalVisible(false);
     setNewShiftTitle('');
@@ -297,12 +297,12 @@ export default function App() {
 
     // Supabase Delete
     if (shiftToDelete.id) {
-      const success = await deleteShiftFromSupabase(shiftToDelete.id);
+      const { success, error } = await deleteShiftFromSupabase(shiftToDelete.id);
       if (success) {
         setManualShifts(prev => prev.filter(s => s.id !== shiftToDelete.id)); // Immediate update only
         Alert.alert('成功', '削除しました');
       } else {
-        Alert.alert('エラー', '削除に失敗しました');
+        Alert.alert('エラー', `削除失敗: ${error}`);
         return; // Don't close modal on error
       }
     } else {
@@ -357,12 +357,12 @@ export default function App() {
         color: editType === 'Tutor' ? '#FF5252' : editType === 'MyBasket' ? '#448AFF' : '#FF9500',
       };
 
-      const success = await updateShiftInSupabase(updatedShift);
+      const { success, error } = await updateShiftInSupabase(updatedShift);
       if (success) {
         setManualShifts(prev => prev.map(s => s.id === updatedShift.id ? updatedShift : s)); // Immediate update only
         Alert.alert('成功', '更新しました');
       } else {
-        Alert.alert('エラー', '更新に失敗しました (DB Error)');
+        Alert.alert('エラー', `更新失敗: ${error}`);
       }
     } else {
       // Legacy Update

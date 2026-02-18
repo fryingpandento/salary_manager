@@ -36,7 +36,7 @@ export const fetchShiftsFromSupabase = async (): Promise<Shift[]> => {
     }
 };
 
-export const addShiftToSupabase = async (shift: Shift): Promise<Shift | null> => {
+export const addShiftToSupabase = async (shift: Shift): Promise<{ data: Shift | null, error: string | null }> => {
     try {
         const { data, error } = await supabase
             .from('shifts')
@@ -58,26 +58,29 @@ export const addShiftToSupabase = async (shift: Shift): Promise<Shift | null> =>
 
         if (error) {
             console.error('Error adding shift:', error);
-            return null;
+            return { data: null, error: error.message || JSON.stringify(error) };
         }
 
         if (data && data.length > 0) {
             const item = data[0];
             return {
-                ...shift,
-                id: item.id,
-                color: item.color
+                data: {
+                    ...shift,
+                    id: item.id,
+                    color: item.color
+                },
+                error: null
             };
         }
-        return null;
-    } catch (e) {
+        return { data: null, error: 'No data returned' };
+    } catch (e: any) {
         console.error('Unexpected error adding shift:', e);
-        return null;
+        return { data: null, error: e.message || 'Unexpected error' };
     }
 };
 
-export const updateShiftInSupabase = async (shift: Shift): Promise<boolean> => {
-    if (!shift.id) return false;
+export const updateShiftInSupabase = async (shift: Shift): Promise<{ success: boolean, error: string | null }> => {
+    if (!shift.id) return { success: false, error: 'Shift ID missing' };
     try {
         const { error } = await supabase
             .from('shifts')
@@ -97,16 +100,16 @@ export const updateShiftInSupabase = async (shift: Shift): Promise<boolean> => {
 
         if (error) {
             console.error('Error updating shift:', error);
-            return false;
+            return { success: false, error: error.message || JSON.stringify(error) };
         }
-        return true;
-    } catch (e) {
+        return { success: true, error: null };
+    } catch (e: any) {
         console.error('Unexpected error updating shift:', e);
-        return false;
+        return { success: false, error: e.message || 'Unexpected error' };
     }
 };
 
-export const deleteShiftFromSupabase = async (id: number): Promise<boolean> => {
+export const deleteShiftFromSupabase = async (id: number): Promise<{ success: boolean, error: string | null }> => {
     try {
         const { error } = await supabase
             .from('shifts')
@@ -115,11 +118,11 @@ export const deleteShiftFromSupabase = async (id: number): Promise<boolean> => {
 
         if (error) {
             console.error('Error deleting shift:', error);
-            return false;
+            return { success: false, error: error.message || JSON.stringify(error) };
         }
-        return true;
-    } catch (e) {
+        return { success: true, error: null };
+    } catch (e: any) {
         console.error('Unexpected error deleting shift:', e);
-        return false;
+        return { success: false, error: e.message || 'Unexpected error' };
     }
 };

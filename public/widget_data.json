@@ -1,5 +1,5 @@
 {
-  "update_at": "2026-02-18T04:38:24",
+  "update_at": "2026-02-18T04:47:33",
   "future_schedules": [
     {
       "date_str": "2/19(木)",
@@ -92,22 +92,13 @@
       "end_timestamp": 1772451900000
     },
     {
-      "date_str": "3/2(月)",
-      "time_str": "17:00",
-      "end_time_str": "20:45",
-      "location": "介護老人福祉施設 春輝苑",
-      "type": "try",
-      "start_timestamp": 1772438400000,
-      "end_timestamp": 1772451900000
-    },
-    {
-      "date_str": "3/2(月)",
-      "time_str": "17:00",
-      "end_time_str": "20:45",
-      "location": "介護老人福祉施設 春輝苑",
-      "type": "try",
-      "start_timestamp": 1772438400000,
-      "end_timestamp": 1772451900000
+      "date_str": "3/5(木)",
+      "time_str": "09:00",
+      "end_time_str": "18:00",
+      "location": "Test Location",
+      "type": "Tutor",
+      "start_timestamp": 1772668800000,
+      "end_timestamp": 1772701200000
     },
     {
       "date_str": "3/7(土)",
