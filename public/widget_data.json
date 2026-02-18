@@ -1,5 +1,5 @@
 {
-  "update_at": "2026-02-18T04:33:46",
+  "update_at": "2026-02-18T04:38:24",
   "future_schedules": [
     {
       "date_str": "2/19(木)",
@@ -81,6 +81,24 @@
       "type": "mybasket",
       "start_timestamp": 1772323200000,
       "end_timestamp": 1772337600000
+    },
+    {
+      "date_str": "3/2(月)",
+      "time_str": "17:00",
+      "end_time_str": "20:45",
+      "location": "介護老人福祉施設 春輝苑",
+      "type": "try",
+      "start_timestamp": 1772438400000,
+      "end_timestamp": 1772451900000
+    },
+    {
+      "date_str": "3/2(月)",
+      "time_str": "17:00",
+      "end_time_str": "20:45",
+      "location": "介護老人福祉施設 春輝苑",
+      "type": "try",
+      "start_timestamp": 1772438400000,
+      "end_timestamp": 1772451900000
     },
     {
       "date_str": "3/2(月)",

@@ -46,12 +46,12 @@ export const addShiftToSupabase = async (shift: Shift): Promise<Shift | null> =>
                     date: shift.date,
                     start_time: shift.startTime,
                     end_time: shift.endTime,
-                    location: shift.location,
+                    location: shift.location || null, // Handle undefined
                     salary: shift.salary,
                     type: shift.type,
-                    description: shift.description,
-                    hourly_rate: shift.hourlyRate,
-                    color: shift.color,
+                    description: shift.description || null,
+                    hourly_rate: shift.hourlyRate || null, // Handle undefined
+                    // color: shift.color || null, // Column missing in DB
                 }
             ])
             .select();
@@ -86,12 +86,12 @@ export const updateShiftInSupabase = async (shift: Shift): Promise<boolean> => {
                 date: shift.date,
                 start_time: shift.startTime,
                 end_time: shift.endTime,
-                location: shift.location,
+                location: shift.location || null,
                 salary: shift.salary,
                 type: shift.type,
-                description: shift.description,
-                hourly_rate: shift.hourlyRate,
-                color: shift.color,
+                description: shift.description || null,
+                hourly_rate: shift.hourlyRate || null,
+                // color: shift.color || null, // Column missing in DB
             })
             .eq('id', shift.id);
 
