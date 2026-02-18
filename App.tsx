@@ -139,11 +139,10 @@ export default function App() {
 
   // Combine shifts
   useEffect(() => {
-    const scraperShifts = parseTutorShifts(tutorDataRaw as ScraperData[])
-      .filter(s => !excludedTutorShifts.includes(getShiftId(s)))
-      .filter(s => !(s.type === 'MyBasket' && excludedDates.includes(s.date)));
-
-    const combined = [...scraperShifts, ...manualShifts].map(s => {
+    // 以前はローカルのJSON (tutorDataRaw) と Supabase (manualShifts) をマージしていましたが、
+    // 全データSupabaseに移行済みのため、ローカルJSONは無視します。
+    // ダブルカウント防止のため、manualShiftsのみ正とします。
+    const combined = [...manualShifts].map(s => {
       const id = getShiftId(s);
       if (salaryOverrides[id] !== undefined) {
         return { ...s, salary: salaryOverrides[id] };
