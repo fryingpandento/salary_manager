@@ -11,6 +11,7 @@ export interface Shift {
     hourlyRate?: number;
     color?: string;
     location?: string;
+    id?: number; // Supabase ID
 }
 
 // Matches the output of the schedule scraper

@@ -1,5 +1,5 @@
 {
-  "update_at": "2026-02-18T02:55:53",
+  "update_at": "2026-02-18T03:38:50",
   "future_schedules": [
     {
       "date_str": "2/19(木)",
@@ -38,6 +38,24 @@
       "end_timestamp": 1771674300000
     },
     {
+      "date_str": "2/21(土)",
+      "time_str": "18:15",
+      "end_time_str": "20:45",
+      "location": "中央ふれあい館",
+      "type": "try",
+      "start_timestamp": 1771665300000,
+      "end_timestamp": 1771674300000
+    },
+    {
+      "date_str": "2/21(土)",
+      "time_str": "18:15",
+      "end_time_str": "20:45",
+      "location": "2026年2月21日（土） 18:15 ～ 20:45",
+      "type": "try",
+      "start_timestamp": 1771665300000,
+      "end_timestamp": 1771674300000
+    },
+    {
       "date_str": "2/22(日)",
       "time_str": "09:00",
       "end_time_str": "13:00",
@@ -45,24 +63,6 @@
       "type": "mybasket",
       "start_timestamp": 1771718400000,
       "end_timestamp": 1771732800000
-    },
-    {
-      "date_str": "2/25(水)",
-      "time_str": "18:15",
-      "end_time_str": "20:45",
-      "location": "鳩ヶ谷コミュニティセンター",
-      "type": "try",
-      "start_timestamp": 1772010900000,
-      "end_timestamp": 1772019900000
-    },
-    {
-      "date_str": "2/27(金)",
-      "time_str": "17:00",
-      "end_time_str": "20:45",
-      "location": "ふれあいプラザさくら",
-      "type": "try",
-      "start_timestamp": 1772179200000,
-      "end_timestamp": 1772192700000
     },
     {
       "date_str": "2/28(土)",
@@ -81,6 +81,15 @@
       "type": "mybasket",
       "start_timestamp": 1772323200000,
       "end_timestamp": 1772337600000
+    },
+    {
+      "date_str": "3/2(月)",
+      "time_str": "10:00",
+      "end_time_str": "19:00",
+      "location": "期日前投票 行政センター",
+      "type": "Tutor",
+      "start_timestamp": 1772413200000,
+      "end_timestamp": 1772445600000
     },
     {
       "date_str": "3/2(月)",

@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Shift, ScraperData, parseTutorShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage, calculateRangeTotal, calculateAnnualTotal, extractLocationName, LocationStats } from './utils/shiftCalculator';
 import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts, loadDiscoveredLocations, saveDiscoveredLocations, resetAllExclusions, loadSalaryOverrides, saveSalaryOverrides } from './utils/storage';
-import { fetchShiftsFromSupabase, addShiftToSupabase } from './utils/supabaseService';
+import { fetchShiftsFromSupabase, addShiftToSupabase, updateShiftInSupabase, deleteShiftFromSupabase } from './utils/supabaseService';
 // @ts-ignore
 import tutorDataRaw from './assets/shifts.json';
 
@@ -188,7 +188,7 @@ export default function App() {
     const marks: any = {};
     allShifts.forEach(shift => {
       if (!marks[shift.date]) marks[shift.date] = { dots: [] };
-      const color = shift.type === 'Tutor' ? '#FF5252' : '#448AFF';
+      const color = shift.color || (shift.type === 'Tutor' ? '#FF5252' : shift.type === 'MyBasket' ? '#448AFF' : '#FF9500');
       if (!marks[shift.date].dots.find((d: any) => d.color === color)) {
         marks[shift.date].dots.push({ color });
       }
@@ -235,6 +235,8 @@ export default function App() {
       endTime: newShiftEnd,
       description: '手動追加',
       hourlyRate: newShiftType === 'Other' ? parseInt(newHourlyWage) : undefined,
+      location: newShiftLocation,
+      color: newShiftType === 'Tutor' ? '#FF5252' : newShiftType === 'MyBasket' ? '#448AFF' : '#FF9500',
     };
 
     const updated = [...manualShifts, newShift];
@@ -264,37 +266,100 @@ export default function App() {
   // Delete/Edit Logic
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [shiftToDelete, setShiftToDelete] = useState<Shift | null>(null);
+
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editAmount, setEditAmount] = useState('');
   const [shiftToEdit, setShiftToEdit] = useState<Shift | null>(null);
 
+  // Edit Form State
+  const [editTitle, setEditTitle] = useState('');
+  const [editSalary, setEditSalary] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editType, setEditType] = useState<'Tutor' | 'MyBasket' | 'Other'>('Tutor');
+  const [editStart, setEditStart] = useState('');
+  const [editEnd, setEditEnd] = useState('');
+  const [editHourlyRate, setEditHourlyRate] = useState('');
+
+  // Edit Pickers
+  const [showEditStartTimePicker, setShowEditStartTimePicker] = useState(false);
+  const [showEditEndTimePicker, setShowEditEndTimePicker] = useState(false);
+
   const confirmDeleteShift = (shift: Shift) => { setShiftToDelete(shift); setDeleteModalVisible(true); };
+
   const performDelete = async () => {
     if (!shiftToDelete) return;
-    if (shiftToDelete.description === '手動追加') {
-      const updated = manualShifts.filter(s => !(s.date === shiftToDelete.date && s.startTime === shiftToDelete.startTime && s.endTime === shiftToDelete.endTime && s.title === shiftToDelete.title));
-      setManualShifts(updated); await saveManualShifts(updated);
+
+    // Supabase Delete
+    if (shiftToDelete.id) {
+      const success = await deleteShiftFromSupabase(shiftToDelete.id);
+      if (success) {
+        setManualShifts(manualShifts.filter(s => s.id !== shiftToDelete.id));
+        Alert.alert('成功', '削除しました');
+      } else {
+        Alert.alert('エラー', '削除に失敗しました');
+        return; // Don't close modal on error
+      }
     } else {
-      const id = getShiftId(shiftToDelete);
-      if (shiftToDelete.type === 'MyBasket') { setExcludedDates([...excludedDates, shiftToDelete.date]); await saveExcludedDates([...excludedDates, shiftToDelete.date]); }
-      else { setExcludedTutorShifts([...excludedTutorShifts, id]); await saveExcludedTutorShifts([...excludedTutorShifts, id]); }
+      // Legacy Local Delete (by matching fields)
+      if (shiftToDelete.description === '手動追加') {
+        const updated = manualShifts.filter(s => !(s.date === shiftToDelete.date && s.startTime === shiftToDelete.startTime && s.endTime === shiftToDelete.endTime && s.title === shiftToDelete.title));
+        setManualShifts(updated); await saveManualShifts(updated);
+      } else {
+        // Scraped Data Exclusion
+        const id = getShiftId(shiftToDelete);
+        if (shiftToDelete.type === 'MyBasket') { setExcludedDates([...excludedDates, shiftToDelete.date]); await saveExcludedDates([...excludedDates, shiftToDelete.date]); }
+        else { setExcludedTutorShifts([...excludedTutorShifts, id]); await saveExcludedTutorShifts([...excludedTutorShifts, id]); }
+      }
     }
     setDeleteModalVisible(false); setShiftToDelete(null);
   };
 
-  const openEditModal = (shift: Shift) => { setShiftToEdit(shift); setEditAmount(shift.salary.toString()); setEditModalVisible(true); };
+  const openEditModal = (shift: Shift) => {
+    setShiftToEdit(shift);
+    setEditTitle(shift.title);
+    setEditSalary(shift.salary.toString());
+    setEditLocation(shift.location || '');
+    setEditType(shift.type);
+    setEditStart(shift.startTime || '');
+    setEditEnd(shift.endTime || '');
+    setEditHourlyRate(shift.hourlyRate ? shift.hourlyRate.toString() : '');
+    setEditModalVisible(true);
+  };
+
   const saveEdit = async () => {
-    if (!shiftToEdit || !editAmount) return;
-    const newSalary = parseInt(editAmount, 10);
-    if (shiftToEdit.description === '手動追加') {
-      const updated = manualShifts.map(s => getShiftId(s) === getShiftId(shiftToEdit) ? { ...s, salary: newSalary } : s);
-      setManualShifts(updated); await saveManualShifts(updated);
+    if (!shiftToEdit || !editSalary || !editTitle) return;
+    const newSalaryNum = parseInt(editSalary, 10);
+
+    // Supabase Update
+    if (shiftToEdit.id) {
+      const updatedShift: Shift = {
+        ...shiftToEdit,
+        title: editTitle,
+        salary: newSalaryNum,
+        location: editLocation,
+        type: editType,
+        startTime: editStart,
+        endTime: editEnd,
+        hourlyRate: editHourlyRate ? parseInt(editHourlyRate, 10) : undefined,
+        color: editType === 'Tutor' ? '#FF5252' : editType === 'MyBasket' ? '#448AFF' : '#FF9500', // Example colors
+      };
+
+      const success = await updateShiftInSupabase(updatedShift);
+      if (success) {
+        setManualShifts(manualShifts.map(s => s.id === updatedShift.id ? updatedShift : s));
+        Alert.alert('成功', '更新しました');
+      } else {
+        Alert.alert('エラー', '更新に失敗しました');
+      }
     } else {
-      const updatedOverrides = { ...salaryOverrides, [getShiftId(shiftToEdit)]: newSalary };
-      setSalaryOverrides(updatedOverrides); await saveSalaryOverrides(updatedOverrides);
+      // Legacy Update (Limited support or block)
+      Alert.alert('エラー', 'このデータは編集できません（再作成してください）');
     }
     setEditModalVisible(false); setShiftToEdit(null);
   };
+
+  // Edit Date Handlers
+  const onEditStartTimeChange = (event: any, date?: Date) => { setShowEditStartTimePicker(false); if (date) setEditStart(format(date, 'HH:mm')); };
+  const onEditEndTimeChange = (event: any, date?: Date) => { setShowEditEndTimePicker(false); if (date) setEditEnd(format(date, 'HH:mm')); };
 
   const handleResetExclusions = async () => {
     Alert.alert('復元', '削除した予定を復元しますか？', [
@@ -507,6 +572,7 @@ export default function App() {
               {newShiftType !== 'MyBasket' && (
                 <TextInput style={styles.input} placeholder="タイトル" value={newShiftTitle} onChangeText={setNewShiftTitle} placeholderTextColor={SUBTEXT_COLOR} />
               )}
+              <TextInput style={styles.input} placeholder="場所 (任意)" value={newShiftLocation} onChangeText={setNewShiftLocation} placeholderTextColor={SUBTEXT_COLOR} />
               {newShiftType === 'Other' && (
                 <TextInput style={styles.input} placeholder="時給" value={newHourlyWage} onChangeText={setNewHourlyWage} keyboardType="numeric" placeholderTextColor={SUBTEXT_COLOR} />
               )}
@@ -625,13 +691,59 @@ export default function App() {
         </Modal>
 
         {/* Edit Modal */}
-        <Modal animationType="fade" transparent={true} visible={editModalVisible} onRequestClose={() => setEditModalVisible(false)}>
+        {/* Edit Modal (Redesigned) */}
+        <Modal animationType="slide" transparent={true} visible={editModalVisible} onRequestClose={() => setEditModalVisible(false)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
-              <Text style={styles.modalHeader}>金額修正</Text>
-              <TextInput style={styles.input} value={editAmount} onChangeText={setEditAmount} keyboardType="numeric" />
-              <Button title="保存" onPress={saveEdit} />
-              <Button title="キャンセル" onPress={() => setEditModalVisible(false)} />
+              <Text style={styles.modalHeader}>予定を編集</Text>
+
+              <View style={styles.segmentedControl}>
+                {(['Tutor', 'MyBasket', 'Other'] as const).map(type => (
+                  <TouchableOpacity key={type} style={[styles.segment, editType === type && styles.segmentActive]} onPress={() => setEditType(type)}>
+                    <Text style={[styles.segmentText, editType === type && styles.segmentTextActive]}>
+                      {type === 'Tutor' ? '入力' : type === 'MyBasket' ? 'まいばす' : '時給'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput style={styles.input} placeholder="タイトル" value={editTitle} onChangeText={setEditTitle} placeholderTextColor={SUBTEXT_COLOR} />
+              <TextInput style={styles.input} placeholder="場所 (任意)" value={editLocation} onChangeText={setEditLocation} placeholderTextColor={SUBTEXT_COLOR} />
+
+              {editType === 'Other' && (
+                <TextInput style={styles.input} placeholder="時給" value={editHourlyRate} onChangeText={setEditHourlyRate} keyboardType="numeric" placeholderTextColor={SUBTEXT_COLOR} />
+              )}
+
+              <TextInput style={styles.input} placeholder="金額" value={editSalary} onChangeText={setEditSalary} keyboardType="numeric" placeholderTextColor={SUBTEXT_COLOR} />
+
+              <View style={styles.row}>
+                {Platform.OS === 'web' ? (
+                  <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} style={styles.webInput} />
+                ) : (
+                  <TouchableOpacity onPress={() => setShowEditStartTimePicker(true)} style={styles.dateButton}><Text>{editStart}</Text></TouchableOpacity>
+                )}
+                <Text style={{ marginHorizontal: 10 }}>→</Text>
+                {Platform.OS === 'web' ? (
+                  <input type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} style={styles.webInput} />
+                ) : (
+                  <TouchableOpacity onPress={() => setShowEditEndTimePicker(true)} style={styles.dateButton}><Text>{editEnd}</Text></TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSecondary]} onPress={() => setEditModalVisible(false)}>
+                  <Text style={styles.modalBtnTextSecondary}>キャンセル</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={saveEdit}>
+                  <Text style={styles.modalBtnText}>更新</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnDestructive]} onPress={() => { setEditModalVisible(false); setTimeout(() => confirmDeleteShift(shiftToEdit!), 300); }}>
+                  <Text style={styles.modalBtnText}>削除</Text>
+                </TouchableOpacity>
+              </View>
+
+              {showEditStartTimePicker && <DateTimePicker value={getTimeDate(editStart)} mode="time" onChange={onEditStartTimeChange} />}
+              {showEditEndTimePicker && <DateTimePicker value={getTimeDate(editEnd)} mode="time" onChange={onEditEndTimeChange} />}
             </View>
           </View>
         </Modal>
@@ -665,7 +777,7 @@ const styles = StyleSheet.create({
   sectionHeader: { fontSize: 13, color: SUBTEXT_COLOR, fontWeight: '600', marginBottom: 8, marginLeft: 16, textTransform: 'uppercase' },
 
   listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-  listItemSeparator: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#C6C6C8', marginLeft: 16 },
+  listItemSeparator: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#C6C6C8' },
   itemTitle: { fontSize: 17, fontWeight: '400', color: TEXT_COLOR, marginBottom: 4 },
   itemTime: { fontSize: 14, color: SUBTEXT_COLOR },
   itemPrice: { fontSize: 17, fontWeight: '400', color: TEXT_COLOR, fontVariant: ['tabular-nums'] },
