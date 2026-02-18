@@ -111,11 +111,11 @@ export default function App() {
         // 重複チェック: IDがあるものはSupabase優先、IDがないLocalデータも追加
         // LocalデータにIDは基本ないはず
         const relevantLocalShifts = localShifts.filter(ls => {
-          // 同じ日付、時間、タイトルのものがSupabaseにあるかチェック
+          // 同じ日付、時間（HH:mmまで一致）、タイトルのものがSupabaseにあるかチェック
           const existsInSupabase = supabaseShifts.some(ss =>
             ss.date === ls.date &&
-            ss.startTime === ls.startTime &&
-            ss.endTime === ls.endTime &&
+            (ss.startTime || '').slice(0, 5) === (ls.startTime || '').slice(0, 5) &&
+            (ss.endTime || '').slice(0, 5) === (ls.endTime || '').slice(0, 5) &&
             ss.title === ls.title
           );
           return !existsInSupabase;
@@ -338,6 +338,8 @@ export default function App() {
     const newSalaryNum = parseInt(editSalary, 10);
 
     // Supabase Update
+    // Supabase Update
+    console.log('Update shift:', shiftToEdit.id);
     if (shiftToEdit.id) {
       const updatedShift: Shift = {
         ...shiftToEdit,
@@ -348,7 +350,7 @@ export default function App() {
         startTime: editStart,
         endTime: editEnd,
         hourlyRate: editHourlyRate ? parseInt(editHourlyRate, 10) : undefined,
-        color: editType === 'Tutor' ? '#FF5252' : editType === 'MyBasket' ? '#448AFF' : '#FF9500', // Example colors
+        color: editType === 'Tutor' ? '#FF5252' : editType === 'MyBasket' ? '#448AFF' : '#FF9500',
       };
 
       const success = await updateShiftInSupabase(updatedShift);
@@ -359,7 +361,8 @@ export default function App() {
         Alert.alert('エラー', '更新に失敗しました');
       }
     } else {
-      // Legacy Update (Limited support or block)
+      // Legacy Update
+      console.log('Legacy update attempted (no ID)');
       Alert.alert('エラー', 'このデータは編集できません（再作成してください）');
     }
     setEditModalVisible(false); setShiftToEdit(null);
