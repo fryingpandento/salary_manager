@@ -106,8 +106,21 @@ export default function App() {
       // 今回は単純にSupabase + Local(未移行分)を表示する形にする、またはSupabaseのみにする
       // ユーザー要望「Supabaseに移行したい」 -> Supabaseのデータを正とする
       // ただし、まだ空かもしれないので、localShiftsを表示しつつ、データがあればSupabaseを使う実装例
+      // SupabaseとLocalをマージする (IDがないLocalデータも表示するため)
       if (supabaseShifts.length > 0) {
-        setManualShifts(supabaseShifts);
+        // 重複チェック: IDがあるものはSupabase優先、IDがないLocalデータも追加
+        // LocalデータにIDは基本ないはず
+        const relevantLocalShifts = localShifts.filter(ls => {
+          // 同じ日付、時間、タイトルのものがSupabaseにあるかチェック
+          const existsInSupabase = supabaseShifts.some(ss =>
+            ss.date === ls.date &&
+            ss.startTime === ls.startTime &&
+            ss.endTime === ls.endTime &&
+            ss.title === ls.title
+          );
+          return !existsInSupabase;
+        });
+        setManualShifts([...supabaseShifts, ...relevantLocalShifts]);
       } else {
         setManualShifts(localShifts);
       }
