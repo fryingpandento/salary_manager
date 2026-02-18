@@ -1,15 +1,6 @@
 {
-  "update_at": "2026-02-17T02:04:34",
+  "update_at": "2026-02-18T02:55:53",
   "future_schedules": [
-    {
-      "date_str": "2/17(火)",
-      "time_str": "17:00",
-      "end_time_str": "20:45",
-      "location": "南平公民館",
-      "type": "try",
-      "start_timestamp": 1771315200000,
-      "end_timestamp": 1771328700000
-    },
     {
       "date_str": "2/19(木)",
       "time_str": "17:00",

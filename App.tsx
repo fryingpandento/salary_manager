@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Shift, ScraperData, parseTutorShifts, calculateMonthlyTotal, calculateMyBasketWage, calculateHourlyWage, calculateRangeTotal, calculateAnnualTotal, extractLocationName, LocationStats } from './utils/shiftCalculator';
 import { loadManualShifts, saveManualShifts, loadExcludedDates, saveExcludedDates, loadExcludedTutorShifts, saveExcludedTutorShifts, loadDiscoveredLocations, saveDiscoveredLocations, resetAllExclusions, loadSalaryOverrides, saveSalaryOverrides } from './utils/storage';
+import { fetchShiftsFromSupabase, addShiftToSupabase } from './utils/supabaseService';
 // @ts-ignore
 import tutorDataRaw from './assets/shifts.json';
 
@@ -97,12 +98,25 @@ export default function App() {
   // Load initial data
   useEffect(() => {
     const loadData = async () => {
-      const shifts = await loadManualShifts();
+      // Supabaseからデータを取得
+      const supabaseShifts = await fetchShiftsFromSupabase();
+      // ローカルも一応読み込むが、基本はSupabase優先（あるいはマージ）
+      const localShifts = await loadManualShifts();
+
+      // 今回は単純にSupabase + Local(未移行分)を表示する形にする、またはSupabaseのみにする
+      // ユーザー要望「Supabaseに移行したい」 -> Supabaseのデータを正とする
+      // ただし、まだ空かもしれないので、localShiftsを表示しつつ、データがあればSupabaseを使う実装例
+      if (supabaseShifts.length > 0) {
+        setManualShifts(supabaseShifts);
+      } else {
+        setManualShifts(localShifts);
+      }
+
       const exclusions = await loadExcludedDates();
       const tutorExclusions = await loadExcludedTutorShifts();
       const locations = await loadDiscoveredLocations();
       const overrides = await loadSalaryOverrides();
-      setManualShifts(shifts);
+
       setExcludedDates(exclusions);
       setExcludedTutorShifts(tutorExclusions);
       setDiscoveredLocations(locations);
@@ -225,7 +239,17 @@ export default function App() {
 
     const updated = [...manualShifts, newShift];
     setManualShifts(updated);
-    await saveManualShifts(updated);
+
+    // Local save (Deprecated but kept for backup if needed)
+    // await saveManualShifts(updated);
+
+    // Supabase save
+    const success = await addShiftToSupabase(newShift);
+    if (success) {
+      Alert.alert('成功', 'Supabaseに保存しました');
+    } else {
+      Alert.alert('エラー', 'Supabaseへの保存に失敗しました（設定を確認してください）');
+    }
     setModalVisible(false);
     setNewShiftTitle('');
     setNewShiftSalary('');
