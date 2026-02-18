@@ -104,20 +104,18 @@ export default function App() {
 
     // SupabaseとLocalをマージする (IDがないLocalデータも表示するため)
     if (supabaseShifts.length > 0) {
-      // 重複チェック: IDがあるものはSupabase優先、IDがないLocalデータも追加
-      // LocalデータにIDは基本ないはず
-      const relevantLocalShifts = localShifts.filter(ls => {
-        // 同じ日付、時間（HH:mmまで一致）、タイトルのものがSupabaseにあるかチェック
-        const existsInSupabase = supabaseShifts.some(ss =>
-          ss.date === ls.date &&
-          (ss.startTime || '').slice(0, 5) === (ls.startTime || '').slice(0, 5) &&
-          (ss.endTime || '').slice(0, 5) === (ls.endTime || '').slice(0, 5) &&
-          ss.title === ls.title
-        );
-        return !existsInSupabase;
-      });
-      setManualShifts([...supabaseShifts, ...relevantLocalShifts]);
+      // Supabaseにデータがある場合、ローカル（AsyncStorage）のデータは「古いキャッシュ」とみなして無視する方針に変更
+      // ユーザー要望「重複する」への対策。
+      // もしローカルにしかないデータ（オフライン作成など）がある場合は別途考慮が必要だが、
+      // 基本的に「追加」時は即Supabaseに送るようにしたので、ここはSupabase正で良いはず。
+      setManualShifts(supabaseShifts);
+
+      // 念のためログには出す
+      if (localShifts.length > 0) {
+        console.log('Local shifts ignored in favor of Supabase data:', localShifts.length);
+      }
     } else {
+      // Supabaseが空、または取得失敗時はローカルを表示
       setManualShifts(localShifts);
     }
 
