@@ -1,5 +1,5 @@
 {
-  "update_at": "2026-02-18T04:20:28",
+  "update_at": "2026-02-18T04:29:15",
   "future_schedules": [
     {
       "date_str": "2/19(木)",
@@ -81,15 +81,6 @@
       "type": "mybasket",
       "start_timestamp": 1772323200000,
       "end_timestamp": 1772337600000
-    },
-    {
-      "date_str": "3/2(月)",
-      "time_str": "10:00",
-      "end_time_str": "19:00",
-      "location": "期日前投票 行政センター (Updated)",
-      "type": "Tutor",
-      "start_timestamp": 1772413200000,
-      "end_timestamp": 1772445600000
     },
     {
       "date_str": "3/2(月)",

@@ -254,7 +254,8 @@ export default function App() {
     // Supabase save
     const addedShift = await addShiftToSupabase(newShift);
     if (addedShift) {
-      await loadData(); // Reload all data
+      setManualShifts(prev => [...prev, addedShift]); // Immediate update
+      loadData(); // Background sync
       Alert.alert('成功', 'Supabaseに保存しました');
     } else {
       Alert.alert('エラー', 'Supabaseへの保存に失敗しました（設定を確認してください）');
@@ -299,7 +300,8 @@ export default function App() {
     if (shiftToDelete.id) {
       const success = await deleteShiftFromSupabase(shiftToDelete.id);
       if (success) {
-        await loadData(); // Reload all data
+        setManualShifts(prev => prev.filter(s => s.id !== shiftToDelete.id)); // Immediate update
+        loadData(); // Background sync
         Alert.alert('成功', '削除しました');
       } else {
         Alert.alert('エラー', '削除に失敗しました');
@@ -359,7 +361,8 @@ export default function App() {
 
       const success = await updateShiftInSupabase(updatedShift);
       if (success) {
-        await loadData(); // Reload all data
+        setManualShifts(prev => prev.map(s => s.id === updatedShift.id ? updatedShift : s)); // Immediate update
+        loadData(); // Background sync
         Alert.alert('成功', '更新しました');
       } else {
         Alert.alert('エラー', '更新に失敗しました (DB Error)');
