@@ -252,15 +252,10 @@ export default function App() {
       color: newShiftType === 'Tutor' ? '#FF5252' : newShiftType === 'MyBasket' ? '#448AFF' : '#FF9500',
     };
 
-    const updated = [...manualShifts, newShift];
-    setManualShifts(updated);
-
-    // Local save (Deprecated but kept for backup if needed)
-    // await saveManualShifts(updated);
-
     // Supabase save
-    const success = await addShiftToSupabase(newShift);
-    if (success) {
+    const addedShift = await addShiftToSupabase(newShift);
+    if (addedShift) {
+      setManualShifts([...manualShifts, addedShift]);
       Alert.alert('成功', 'Supabaseに保存しました');
     } else {
       Alert.alert('エラー', 'Supabaseへの保存に失敗しました（設定を確認してください）');

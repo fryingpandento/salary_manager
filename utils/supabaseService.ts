@@ -21,8 +21,8 @@ export const fetchShiftsFromSupabase = async (): Promise<Shift[]> => {
             id: item.id,
             date: item.date,
             title: item.title,
-            startTime: item.start_time,
-            endTime: item.end_time,
+            startTime: item.start_time ? item.start_time.slice(0, 5) : '',
+            endTime: item.end_time ? item.end_time.slice(0, 5) : '',
             location: item.location,
             salary: item.salary,
             type: item.type,
@@ -36,9 +36,9 @@ export const fetchShiftsFromSupabase = async (): Promise<Shift[]> => {
     }
 };
 
-export const addShiftToSupabase = async (shift: Shift): Promise<boolean> => {
+export const addShiftToSupabase = async (shift: Shift): Promise<Shift | null> => {
     try {
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('shifts')
             .insert([
                 {
@@ -53,16 +53,26 @@ export const addShiftToSupabase = async (shift: Shift): Promise<boolean> => {
                     hourly_rate: shift.hourlyRate,
                     color: shift.color,
                 }
-            ]);
+            ])
+            .select();
 
         if (error) {
             console.error('Error adding shift:', error);
-            return false;
+            return null;
         }
-        return true;
+
+        if (data && data.length > 0) {
+            const item = data[0];
+            return {
+                ...shift,
+                id: item.id,
+                color: item.color
+            };
+        }
+        return null;
     } catch (e) {
         console.error('Unexpected error adding shift:', e);
-        return false;
+        return null;
     }
 };
 
