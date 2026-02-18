@@ -334,12 +334,17 @@ export default function App() {
   };
 
   const saveEdit = async () => {
-    if (!shiftToEdit || !editSalary || !editTitle) return;
+    console.log('saveEdit called');
+    if (!shiftToEdit) { Alert.alert('Error', 'No shift selected'); return; }
+    if (!editTitle) { Alert.alert('Error', 'Title is missing'); return; }
+    if (!editSalary) { Alert.alert('Error', 'Salary is missing'); return; }
+
     const newSalaryNum = parseInt(editSalary, 10);
+    if (isNaN(newSalaryNum)) { Alert.alert('Error', 'Invalid salary'); return; }
 
     // Supabase Update
-    // Supabase Update
-    console.log('Update shift:', shiftToEdit.id);
+    console.log('Update shift ID:', shiftToEdit.id);
+
     if (shiftToEdit.id) {
       const updatedShift: Shift = {
         ...shiftToEdit,
@@ -358,12 +363,12 @@ export default function App() {
         setManualShifts(manualShifts.map(s => s.id === updatedShift.id ? updatedShift : s));
         Alert.alert('成功', '更新しました');
       } else {
-        Alert.alert('エラー', '更新に失敗しました');
+        Alert.alert('エラー', '更新に失敗しました (DB Error)');
       }
     } else {
       // Legacy Update
-      console.log('Legacy update attempted (no ID)');
-      Alert.alert('エラー', 'このデータは編集できません（再作成してください）');
+      console.log('Legacy update attempted (no ID). Shift:', shiftToEdit);
+      Alert.alert('エラー', 'このデータは編集できません（IDがありません）。削除して作り直してください。');
     }
     setEditModalVisible(false); setShiftToEdit(null);
   };
