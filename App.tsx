@@ -565,6 +565,19 @@ export default function App() {
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
                 </TouchableOpacity>
+                <View style={styles.listItemSeparator} />
+                <TouchableOpacity onPress={() => {
+                  setSettingsModalVisible(false);
+                  loadData().then(() => Alert.alert('完了', 'データを最新の状態に更新しました'));
+                }} style={styles.listItem}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={[styles.menuIconContainerList, { backgroundColor: '#8E8E93' }]}>
+                      <Ionicons name="refresh-outline" size={20} color="#fff" />
+                    </View>
+                    <Text style={[styles.itemTitle, { marginLeft: 12 }]}>データ再読み込み</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                </TouchableOpacity>
               </View>
             </View>
           </SafeAreaView>

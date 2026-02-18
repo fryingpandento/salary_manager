@@ -3,7 +3,8 @@
 // 2. 新しいスクリプトを作成し、この内容をコピペしてください
 // 3. ホーム画面にScriptableのウィジェットを追加し、このスクリプトを選択してください
 
-const url = "https://raw.githubusercontent.com/fryingpandento/salary_manager/main/public/widget_data.json";
+const supabaseUrl = 'https://wkhhbwzbbvpwmkqdvvso.supabase.co';
+const supabaseKey = 'sb_publishable_kWCeIBN9tu2Jg5LDX5Q9Hg_EL1xHz-f';
 
 async function createWidget() {
     const widget = new ListWidget();
@@ -26,42 +27,51 @@ async function createWidget() {
     widget.addSpacer(12);
 
     try {
-        const req = new Request(url);
-        const data = await req.loadJSON();
+        const today = new Date().toISOString().split('T')[0];
+        const apiUrl = `${supabaseUrl}/rest/v1/shifts?select=*&date=gte.${today}&order=date.asc,start_time.asc&limit=5`;
+        const req = new Request(apiUrl);
+        req.headers = {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`
+        };
 
-        // 更新日時を表示 (デバッグ用、あるいはデータの古さ確認用)
-        // const updateTime = widget.addText(`更新: ${data.update_at.substring(5, 10)} ${data.update_at.substring(11, 16)}`);
-        // updateTime.font = Font.systemFont(8);
-        // updateTime.textColor = Color.gray();
-        // widget.addSpacer(4);
+        const shifts = await req.loadJSON();
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
 
-        const schedules = data.future_schedules.slice(0, 3); // 直近3件
-
-        if (schedules.length === 0) {
+        if (shifts.length === 0) {
             const noShift = widget.addText("現在予定はありません");
             noShift.font = Font.systemFont(12);
             noShift.textColor = Color.gray();
         } else {
-            for (const s of schedules) {
+            // Show max 3 items
+            for (let i = 0; i < Math.min(shifts.length, 3); i++) {
+                const s = shifts[i];
+                const dateObj = new Date(s.date);
+                const dayStr = days[dateObj.getDay()];
+                const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}(${dayStr})`;
+
+                const startTime = s.start_time.substring(0, 5); // HH:mm:ss -> HH:mm
+                const endTime = s.end_time.substring(0, 5);
+
                 const row = widget.addStack();
                 row.layoutHorizontally();
 
                 // 日付
-                const dateText = row.addText(s.date_str);
+                const dateText = row.addText(dateStr);
                 dateText.font = Font.boldSystemFont(12);
                 dateText.textColor = new Color("#1C1C1E");
 
                 row.addSpacer(8);
 
                 // 時間
-                const timeText = row.addText(`${s.time_str}-${s.end_time_str}`);
+                const timeText = row.addText(`${startTime}-${endTime}`);
                 timeText.font = Font.systemFont(12);
                 timeText.textColor = new Color("#1C1C1E");
 
                 widget.addSpacer(2);
 
-                // 場所
-                const locText = widget.addText(`  ${s.location || s.type}`);
+                // 場所・タイトル
+                const locText = widget.addText(`  ${s.location || s.title}`);
                 locText.font = Font.systemFont(10);
                 locText.textColor = Color.gray();
                 locText.lineLimit = 1;
@@ -72,8 +82,9 @@ async function createWidget() {
     } catch (e) {
         const errText = widget.addText("データ取得エラー");
         errText.textColor = Color.red();
-        const subText = widget.addText("ネット接続を確認してください");
+        const subText = widget.addText(e.message);
         subText.font = Font.systemFont(8);
+        subText.lineLimit = 2;
     }
 
     return widget;
