@@ -95,46 +95,45 @@ export default function App() {
     }
   }, [newShiftType, newShiftStart, newShiftEnd, newHourlyWage, selectedDate]);
 
+  // Load Data Function
+  const loadData = async () => {
+    // Supabaseからデータを取得
+    const supabaseShifts = await fetchShiftsFromSupabase();
+    // ローカルも一応読み込むが、基本はSupabase優先（あるいはマージ）
+    const localShifts = await loadManualShifts();
+
+    // SupabaseとLocalをマージする (IDがないLocalデータも表示するため)
+    if (supabaseShifts.length > 0) {
+      // 重複チェック: IDがあるものはSupabase優先、IDがないLocalデータも追加
+      // LocalデータにIDは基本ないはず
+      const relevantLocalShifts = localShifts.filter(ls => {
+        // 同じ日付、時間（HH:mmまで一致）、タイトルのものがSupabaseにあるかチェック
+        const existsInSupabase = supabaseShifts.some(ss =>
+          ss.date === ls.date &&
+          (ss.startTime || '').slice(0, 5) === (ls.startTime || '').slice(0, 5) &&
+          (ss.endTime || '').slice(0, 5) === (ls.endTime || '').slice(0, 5) &&
+          ss.title === ls.title
+        );
+        return !existsInSupabase;
+      });
+      setManualShifts([...supabaseShifts, ...relevantLocalShifts]);
+    } else {
+      setManualShifts(localShifts);
+    }
+
+    const exclusions = await loadExcludedDates();
+    const tutorExclusions = await loadExcludedTutorShifts();
+    const locations = await loadDiscoveredLocations();
+    const overrides = await loadSalaryOverrides();
+
+    setExcludedDates(exclusions);
+    setExcludedTutorShifts(tutorExclusions);
+    setDiscoveredLocations(locations);
+    setSalaryOverrides(overrides);
+  };
+
   // Load initial data
   useEffect(() => {
-    const loadData = async () => {
-      // Supabaseからデータを取得
-      const supabaseShifts = await fetchShiftsFromSupabase();
-      // ローカルも一応読み込むが、基本はSupabase優先（あるいはマージ）
-      const localShifts = await loadManualShifts();
-
-      // 今回は単純にSupabase + Local(未移行分)を表示する形にする、またはSupabaseのみにする
-      // ユーザー要望「Supabaseに移行したい」 -> Supabaseのデータを正とする
-      // ただし、まだ空かもしれないので、localShiftsを表示しつつ、データがあればSupabaseを使う実装例
-      // SupabaseとLocalをマージする (IDがないLocalデータも表示するため)
-      if (supabaseShifts.length > 0) {
-        // 重複チェック: IDがあるものはSupabase優先、IDがないLocalデータも追加
-        // LocalデータにIDは基本ないはず
-        const relevantLocalShifts = localShifts.filter(ls => {
-          // 同じ日付、時間（HH:mmまで一致）、タイトルのものがSupabaseにあるかチェック
-          const existsInSupabase = supabaseShifts.some(ss =>
-            ss.date === ls.date &&
-            (ss.startTime || '').slice(0, 5) === (ls.startTime || '').slice(0, 5) &&
-            (ss.endTime || '').slice(0, 5) === (ls.endTime || '').slice(0, 5) &&
-            ss.title === ls.title
-          );
-          return !existsInSupabase;
-        });
-        setManualShifts([...supabaseShifts, ...relevantLocalShifts]);
-      } else {
-        setManualShifts(localShifts);
-      }
-
-      const exclusions = await loadExcludedDates();
-      const tutorExclusions = await loadExcludedTutorShifts();
-      const locations = await loadDiscoveredLocations();
-      const overrides = await loadSalaryOverrides();
-
-      setExcludedDates(exclusions);
-      setExcludedTutorShifts(tutorExclusions);
-      setDiscoveredLocations(locations);
-      setSalaryOverrides(overrides);
-    };
     loadData();
   }, []);
 
@@ -255,7 +254,7 @@ export default function App() {
     // Supabase save
     const addedShift = await addShiftToSupabase(newShift);
     if (addedShift) {
-      setManualShifts([...manualShifts, addedShift]);
+      await loadData(); // Reload all data
       Alert.alert('成功', 'Supabaseに保存しました');
     } else {
       Alert.alert('エラー', 'Supabaseへの保存に失敗しました（設定を確認してください）');
@@ -300,7 +299,7 @@ export default function App() {
     if (shiftToDelete.id) {
       const success = await deleteShiftFromSupabase(shiftToDelete.id);
       if (success) {
-        setManualShifts(manualShifts.filter(s => s.id !== shiftToDelete.id));
+        await loadData(); // Reload all data
         Alert.alert('成功', '削除しました');
       } else {
         Alert.alert('エラー', '削除に失敗しました');
@@ -360,7 +359,7 @@ export default function App() {
 
       const success = await updateShiftInSupabase(updatedShift);
       if (success) {
-        setManualShifts(manualShifts.map(s => s.id === updatedShift.id ? updatedShift : s));
+        await loadData(); // Reload all data
         Alert.alert('成功', '更新しました');
       } else {
         Alert.alert('エラー', '更新に失敗しました (DB Error)');

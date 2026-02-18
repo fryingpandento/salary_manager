@@ -1,5 +1,5 @@
 {
-  "update_at": "2026-02-18T04:15:19",
+  "update_at": "2026-02-18T04:20:28",
   "future_schedules": [
     {
       "date_str": "2/19(木)",
@@ -45,6 +45,24 @@
       "type": "mybasket",
       "start_timestamp": 1771718400000,
       "end_timestamp": 1771732800000
+    },
+    {
+      "date_str": "2/25(水)",
+      "time_str": "18:15",
+      "end_time_str": "20:45",
+      "location": "鳩ヶ谷コミュニティセンター",
+      "type": "try",
+      "start_timestamp": 1772010900000,
+      "end_timestamp": 1772019900000
+    },
+    {
+      "date_str": "2/27(金)",
+      "time_str": "17:00",
+      "end_time_str": "20:45",
+      "location": "ふれあいプラザさくら",
+      "type": "try",
+      "start_timestamp": 1772179200000,
+      "end_timestamp": 1772192700000
     },
     {
       "date_str": "2/28(土)",
@@ -110,6 +128,15 @@
       "end_timestamp": 1772942400000
     },
     {
+      "date_str": "3/9(月)",
+      "time_str": "17:00",
+      "end_time_str": "20:45",
+      "location": "介護老人福祉施設 春輝苑",
+      "type": "try",
+      "start_timestamp": 1773043200000,
+      "end_timestamp": 1773056700000
+    },
+    {
       "date_str": "3/14(土)",
       "time_str": "09:00",
       "end_time_str": "13:00",
@@ -126,6 +153,15 @@
       "type": "mybasket",
       "start_timestamp": 1773532800000,
       "end_timestamp": 1773547200000
+    },
+    {
+      "date_str": "3/16(月)",
+      "time_str": "17:00",
+      "end_time_str": "20:45",
+      "location": "介護老人福祉施設 春輝苑",
+      "type": "try",
+      "start_timestamp": 1773648000000,
+      "end_timestamp": 1773661500000
     },
     {
       "date_str": "3/21(土)",
