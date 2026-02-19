@@ -239,15 +239,29 @@ export default function App() {
 
     return allShifts
       .filter(s => {
+        if (!s.date) return false;
         const d = parseISO(s.date);
+
+        // Safety: ensure d is valid
+        if (isNaN(d.getTime())) return false;
+
         // Future dates in range
         if (d > today && d <= nextWeek) return true;
+
         // Today: only if end time is in the future
-        if (d.getTime() === today.getTime()) {
+        // Use string comparison for "Today" to avoid timezone headaches (YYYY-MM-DD)
+        const sDateStr = format(d, 'yyyy-MM-dd');
+        const todayStr = format(today, 'yyyy-MM-dd');
+
+        if (sDateStr === todayStr) {
           const now = new Date();
           const currentHour = now.getHours();
           const currentMinute = now.getMinutes();
-          const [endH, endM] = (s.endTime || '00:00').split(':').map(Number);
+
+          const endTimeStr = s.endTime || '00:00';
+          if (!endTimeStr.includes(':')) return false; // Invalid format check
+
+          const [endH, endM] = endTimeStr.split(':').map(Number);
           return endH > currentHour || (endH === currentHour && endM > currentMinute);
         }
         return false;
