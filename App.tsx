@@ -160,7 +160,7 @@ export default function App() {
       let changed = false;
       combined.forEach(shift => {
         let locName = 'その他';
-        if (shift.type === 'MyBasket') locName = 'まいばすけっと';
+        if (shift.type === 'MyBasket') locName = 'まいばす';
         else if (shift.type === 'Tutor') locName = extractLocationName(shift.description || shift.title);
         else locName = shift.title;
 
@@ -173,7 +173,7 @@ export default function App() {
 
       stats = stats.map(loc => {
         const count = combined.filter(s => {
-          if (loc.name === 'まいばすけっと') return s.type === 'MyBasket';
+          if (loc.name === 'まいばす') return s.type === 'MyBasket';
           const sName = s.type === 'Tutor' ? extractLocationName(s.description || s.title) : s.title;
           return sName === loc.name;
         }).length;
@@ -197,7 +197,21 @@ export default function App() {
     const marks: any = {};
     allShifts.forEach(shift => {
       if (!marks[shift.date]) marks[shift.date] = { dots: [] };
-      const color = shift.color || (shift.type === 'Tutor' ? '#FF5252' : shift.type === 'MyBasket' ? '#448AFF' : '#FF9500');
+
+      let color = '#9C27B0'; // Default (Purple) for "Other"
+
+      // Keep existing colors for specific types
+      // MyBasket ("まいばす") -> Blue (#448AFF)
+      if (shift.type === 'MyBasket' || shift.title === 'まいばす') {
+        color = '#448AFF';
+      }
+      // Admin Support ("行政支援") -> Red (#FF5252)
+      else if (shift.type === 'Tutor' || shift.title === '行政支援' || shift.title === '家庭教師') {
+        color = '#FF5252';
+      }
+
+      if (shift.color) color = shift.color; // Manual override if exists
+
       if (!marks[shift.date].dots.find((d: any) => d.color === color)) {
         marks[shift.date].dots.push({ color });
       }
