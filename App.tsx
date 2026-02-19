@@ -195,35 +195,42 @@ export default function App() {
 
   const markedDates = useMemo(() => {
     const marks: any = {};
-    allShifts.forEach(shift => {
-      let color = '#9C27B0'; // Default (Purple) for "Other" / Unknown
+    try {
+      allShifts.forEach(shift => {
+        if (!shift.date) return; // SKIP invalid dates
 
-      const type = shift.type || '';
-      const title = shift.title || '';
+        // Double check date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(shift.date)) return;
 
-      // MyBasket ("まいばす") -> Blue
-      if (type === 'MyBasket' || title.includes('まいばす') || title.includes('MyBasket')) {
-        color = '#448AFF';
-      }
-      // Admin Support ("行政支援") -> Red
-      else if (type === 'Tutor' || title.includes('行政支援') || title.includes('家庭教師')) {
-        color = '#FF5252';
-      }
+        if (!marks[shift.date]) marks[shift.date] = { dots: [] };
+        let color = '#9C27B0'; // Default (Purple)
 
-      // Manual override ONLY if it's explicitly set (and not just a default string)
-      if (shift.color && shift.color !== '#FF9500' && shift.color !== '#FF5252' && shift.color !== '#448AFF') {
-        color = shift.color;
-      }
+        const type = shift.type || '';
+        const title = shift.title || '';
 
-      if (!marks[shift.date].dots.find((d: any) => d.color === color)) {
-        marks[shift.date].dots.push({ color });
+        if (type === 'MyBasket' || title.includes('まいばす') || title.includes('MyBasket')) {
+          color = '#448AFF';
+        } else if (type === 'Tutor' || title.includes('行政支援') || title.includes('家庭教師')) {
+          color = '#FF5252';
+        }
+
+        if (shift.color && shift.color !== '#FF9500' && shift.color !== '#FF5252' && shift.color !== '#448AFF') {
+          color = shift.color;
+        }
+
+        if (!marks[shift.date].dots.find((d: any) => d.color === color)) {
+          marks[shift.date].dots.push({ color });
+        }
+      });
+
+      if (marks[selectedDate]) {
+        marks[selectedDate].selected = true;
+        marks[selectedDate].selectedColor = PRIMARY_COLOR;
+      } else {
+        marks[selectedDate] = { selected: true, selectedColor: PRIMARY_COLOR, dots: [] };
       }
-    });
-    if (marks[selectedDate]) {
-      marks[selectedDate].selected = true;
-      marks[selectedDate].selectedColor = PRIMARY_COLOR;
-    } else {
-      marks[selectedDate] = { selected: true, selectedColor: PRIMARY_COLOR, dots: [] };
+    } catch (e) {
+      console.error('Error calculating marked dates:', e);
     }
     return marks;
   }, [allShifts, selectedDate]);
