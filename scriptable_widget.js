@@ -24,6 +24,14 @@ async function createWidget() {
     title.font = Font.boldSystemFont(14);
     title.textColor = new Color("#007AFF");
 
+    titleStack.addSpacer();
+
+    const date = new Date();
+    const timeStr = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const updateTime = titleStack.addText(timeStr);
+    updateTime.font = Font.systemFont(10);
+    updateTime.textColor = Color.gray();
+
     widget.addSpacer(12);
 
     try {
@@ -35,8 +43,29 @@ async function createWidget() {
             "Authorization": `Bearer ${supabaseKey}`
         };
 
-        const shifts = await req.loadJSON();
+        let shifts = await req.loadJSON();
         const days = ['日', '月', '火', '水', '木', '金', '土'];
+
+        // Filter out finished shifts
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        shifts = shifts.filter(s => {
+            const sDate = new Date(s.date);
+            // If it's a future date, keep it
+            if (sDate > now && sDate.getDate() !== now.getDate()) return true;
+
+            // If it's today, check end time
+            if (sDate.getDate() === now.getDate()) {
+                const [endH, endM] = s.end_time.split(':').map(Number);
+                if (endH > currentHour || (endH === currentHour && endM > currentMinute)) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        });
 
         if (shifts.length === 0) {
             const noShift = widget.addText("現在予定はありません");

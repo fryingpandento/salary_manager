@@ -196,21 +196,24 @@ export default function App() {
   const markedDates = useMemo(() => {
     const marks: any = {};
     allShifts.forEach(shift => {
-      if (!marks[shift.date]) marks[shift.date] = { dots: [] };
+      let color = '#9C27B0'; // Default (Purple) for "Other" / Unknown
 
-      let color = '#9C27B0'; // Default (Purple) for "Other"
+      const type = shift.type || '';
+      const title = shift.title || '';
 
-      // Keep existing colors for specific types
-      // MyBasket ("まいばす") -> Blue (#448AFF)
-      if (shift.type === 'MyBasket' || shift.title === 'まいばす') {
+      // MyBasket ("まいばす") -> Blue
+      if (type === 'MyBasket' || title.includes('まいばす') || title.includes('MyBasket')) {
         color = '#448AFF';
       }
-      // Admin Support ("行政支援") -> Red (#FF5252)
-      else if (shift.type === 'Tutor' || shift.title === '行政支援' || shift.title === '家庭教師') {
+      // Admin Support ("行政支援") -> Red
+      else if (type === 'Tutor' || title.includes('行政支援') || title.includes('家庭教師')) {
         color = '#FF5252';
       }
 
-      if (shift.color) color = shift.color; // Manual override if exists
+      // Manual override ONLY if it's explicitly set (and not just a default string)
+      if (shift.color && shift.color !== '#FF9500' && shift.color !== '#FF5252' && shift.color !== '#448AFF') {
+        color = shift.color;
+      }
 
       if (!marks[shift.date].dots.find((d: any) => d.color === color)) {
         marks[shift.date].dots.push({ color });
@@ -237,9 +240,23 @@ export default function App() {
     return allShifts
       .filter(s => {
         const d = parseISO(s.date);
-        return d >= today && d <= nextWeek;
+        // Future dates in range
+        if (d > today && d <= nextWeek) return true;
+        // Today: only if end time is in the future
+        if (d.getTime() === today.getTime()) {
+          const now = new Date();
+          const currentHour = now.getHours();
+          const currentMinute = now.getMinutes();
+          const [endH, endM] = (s.endTime || '00:00').split(':').map(Number);
+          return endH > currentHour || (endH === currentHour && endM > currentMinute);
+        }
+        return false;
       })
-      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
+      .sort((a, b) => {
+        const dateDiff = parseISO(a.date).getTime() - parseISO(b.date).getTime();
+        if (dateDiff !== 0) return dateDiff;
+        return (a.startTime || '').localeCompare(b.startTime || '');
+      })
       .slice(0, 5);
   }, [allShifts]);
 
