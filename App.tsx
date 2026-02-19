@@ -232,46 +232,50 @@ export default function App() {
 
   // Upcoming Shifts (Next 7 days)
   const upcomingShifts = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const nextWeek = new Date(today);
+      nextWeek.setDate(today.getDate() + 7);
 
-    return allShifts
-      .filter(s => {
-        if (!s.date) return false;
-        const d = parseISO(s.date);
+      return allShifts
+        .filter(s => {
+          if (!s.date) return false;
+          const d = parseISO(s.date);
 
-        // Safety: ensure d is valid
-        if (isNaN(d.getTime())) return false;
+          // Safety: ensure d is valid
+          if (isNaN(d.getTime())) return false;
 
-        // Future dates in range
-        if (d > today && d <= nextWeek) return true;
+          // Future dates in range
+          if (d > today && d <= nextWeek) return true;
 
-        // Today: only if end time is in the future
-        // Use string comparison for "Today" to avoid timezone headaches (YYYY-MM-DD)
-        const sDateStr = format(d, 'yyyy-MM-dd');
-        const todayStr = format(today, 'yyyy-MM-dd');
+          // Today: only if end time is in the future
+          const sDateStr = format(d, 'yyyy-MM-dd');
+          const todayStr = format(today, 'yyyy-MM-dd');
 
-        if (sDateStr === todayStr) {
-          const now = new Date();
-          const currentHour = now.getHours();
-          const currentMinute = now.getMinutes();
+          if (sDateStr === todayStr) {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
 
-          const endTimeStr = s.endTime || '00:00';
-          if (!endTimeStr.includes(':')) return false; // Invalid format check
+            const endTimeStr = s.endTime || '00:00';
+            if (!endTimeStr.includes(':')) return false;
 
-          const [endH, endM] = endTimeStr.split(':').map(Number);
-          return endH > currentHour || (endH === currentHour && endM > currentMinute);
-        }
-        return false;
-      })
-      .sort((a, b) => {
-        const dateDiff = parseISO(a.date).getTime() - parseISO(b.date).getTime();
-        if (dateDiff !== 0) return dateDiff;
-        return (a.startTime || '').localeCompare(b.startTime || '');
-      })
-      .slice(0, 5);
+            const [endH, endM] = endTimeStr.split(':').map(Number);
+            return endH > currentHour || (endH === currentHour && endM > currentMinute);
+          }
+          return false;
+        })
+        .sort((a, b) => {
+          const dateDiff = parseISO(a.date).getTime() - parseISO(b.date).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          return (a.startTime || '').localeCompare(b.startTime || '');
+        })
+        .slice(0, 5);
+    } catch (e) {
+      console.error('Error calculating upcoming shifts:', e);
+      return [];
+    }
   }, [allShifts]);
 
   // Handlers
