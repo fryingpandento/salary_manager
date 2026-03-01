@@ -87,7 +87,8 @@ async function createWidget() {
         let checkText = (main.title + safeLoc).toLowerCase();
         // "まいばす" (ひらがな) もチェック対象に追加
         let isMyBasket = checkText.includes("mybasket") || checkText.includes("マイバス") || checkText.includes("まいばす");
-        let mainColor = isMyBasket ? new Color("#66ccff") : new Color("#ffcc66");
+        let isGym = checkText.includes("ルネサンス") || checkText.includes("gym") || checkText.includes("ジム");
+        let mainColor = isMyBasket ? new Color("#66ccff") : isGym ? new Color("#34C759") : new Color("#ffcc66");
 
         let row = w.addStack();
         row.layoutHorizontally();
@@ -137,7 +138,9 @@ async function createWidget() {
 
                 let sSafeLoc = s.location || "";
                 let sCheck = (s.title + sSafeLoc).toLowerCase();
-                let sColor = (sCheck.includes("mybasket") || sCheck.includes("マイバス") || sCheck.includes("まいばす")) ? new Color("#66ccff") : new Color("#ffcc66");
+                let sIsMyBasket = sCheck.includes("mybasket") || sCheck.includes("マイバス") || sCheck.includes("まいばす");
+                let sIsGym = sCheck.includes("ルネサンス") || sCheck.includes("gym") || sCheck.includes("ジム");
+                let sColor = sIsMyBasket ? new Color("#66ccff") : sIsGym ? new Color("#34C759") : new Color("#ffcc66");
 
                 let dot = sRow.addStack();
                 dot.size = new Size(6, 6);

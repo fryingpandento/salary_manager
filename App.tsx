@@ -54,7 +54,7 @@ export default function App() {
   const [newShiftSalary, setNewShiftSalary] = useState('');
   const [newShiftStart, setNewShiftStart] = useState('09:00');
   const [newShiftEnd, setNewShiftEnd] = useState('12:00');
-  const [newShiftType, setNewShiftType] = useState<'Tutor' | 'MyBasket' | 'Other'>('Tutor');
+  const [newShiftType, setNewShiftType] = useState<'Tutor' | 'MyBasket' | 'Other' | 'Gym'>('Tutor');
   const [newHourlyWage, setNewHourlyWage] = useState('');
   const [newShiftLocation, setNewShiftLocation] = useState('');
 
@@ -84,6 +84,10 @@ export default function App() {
       const wage = calculateMyBasketWage(selectedDate, newShiftStart, newShiftEnd);
       setNewShiftSalary(wage.toString());
       setNewShiftTitle('まいばす');
+    } else if (newShiftType === 'Gym') {
+      setNewShiftSalary('0');
+      setNewShiftTitle('ルネサンス');
+      setNewShiftLocation('ルネサンス');
     } else if (newShiftType === 'Other') {
       const rate = parseInt(newHourlyWage, 10);
       if (!isNaN(rate) && rate > 0) {
@@ -212,9 +216,11 @@ export default function App() {
           color = '#448AFF';
         } else if (type === 'Tutor' || title.includes('行政支援') || title.includes('家庭教師')) {
           color = '#FF5252';
+        } else if (title.includes('ルネサンス') || title.includes('ジム') || title.includes('ジム')) {
+          color = '#34C759'; // iOS Green
         }
 
-        if (shift.color && shift.color !== '#FF9500' && shift.color !== '#FF5252' && shift.color !== '#448AFF') {
+        if (shift.color && shift.color !== '#FF9500' && shift.color !== '#FF5252' && shift.color !== '#448AFF' && shift.color !== '#34C759') {
           color = shift.color;
         }
 
@@ -295,13 +301,13 @@ export default function App() {
       date: selectedDate,
       title: newShiftTitle,
       salary: salaryNum,
-      type: newShiftType === 'Other' ? 'Tutor' : newShiftType,
+      type: (newShiftType === 'Other' || newShiftType === 'Gym') ? 'Other' : newShiftType,
       startTime: newShiftStart,
       endTime: newShiftEnd,
       description: '手動追加',
       hourlyRate: newShiftType === 'Other' ? parseInt(newHourlyWage) : undefined,
       location: newShiftLocation,
-      color: newShiftType === 'Tutor' ? '#FF5252' : newShiftType === 'MyBasket' ? '#448AFF' : '#FF9500',
+      color: newShiftType === 'Tutor' ? '#FF5252' : newShiftType === 'MyBasket' ? '#448AFF' : newShiftType === 'Gym' ? '#34C759' : '#FF9500',
     };
 
     // Supabase save
@@ -334,7 +340,7 @@ export default function App() {
   const [editTitle, setEditTitle] = useState('');
   const [editSalary, setEditSalary] = useState('');
   const [editLocation, setEditLocation] = useState('');
-  const [editType, setEditType] = useState<'Tutor' | 'MyBasket' | 'Other'>('Tutor');
+  const [editType, setEditType] = useState<'Tutor' | 'MyBasket' | 'Other' | 'Gym'>('Tutor');
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
   const [editHourlyRate, setEditHourlyRate] = useState('');
@@ -378,7 +384,13 @@ export default function App() {
     setEditTitle(shift.title);
     setEditSalary(shift.salary.toString());
     setEditLocation(shift.location || '');
-    setEditType(shift.type);
+
+    if (shift.type === 'Other' && (shift.title.includes('ルネサンス') || shift.title.includes('ジム'))) {
+      setEditType('Gym');
+    } else {
+      setEditType(shift.type as any);
+    }
+
     setEditStart(shift.startTime || '');
     setEditEnd(shift.endTime || '');
     setEditHourlyRate(shift.hourlyRate ? shift.hourlyRate.toString() : '');
@@ -398,16 +410,17 @@ export default function App() {
     console.log('Update shift ID:', shiftToEdit.id);
 
     if (shiftToEdit.id) {
+      const dbType = (editType === 'Other' || editType === 'Gym') ? 'Other' : editType as 'Tutor' | 'MyBasket';
       const updatedShift: Shift = {
         ...shiftToEdit,
         title: editTitle,
         salary: newSalaryNum,
         location: editLocation,
-        type: editType,
+        type: dbType,
         startTime: editStart,
         endTime: editEnd,
         hourlyRate: editHourlyRate ? parseInt(editHourlyRate, 10) : undefined,
-        color: editType === 'Tutor' ? '#FF5252' : editType === 'MyBasket' ? '#448AFF' : '#FF9500',
+        color: editType === 'Tutor' ? '#FF5252' : editType === 'MyBasket' ? '#448AFF' : editType === 'Gym' ? '#34C759' : '#FF9500',
       };
 
       const { success, error } = await updateShiftInSupabase(updatedShift);
@@ -642,10 +655,10 @@ export default function App() {
             <View style={styles.modalContainer}>
               <Text style={styles.modalHeader}>予定を追加</Text>
               <View style={styles.segmentedControl}>
-                {(['Tutor', 'MyBasket', 'Other'] as const).map(type => (
+                {(['Tutor', 'MyBasket', 'Other', 'Gym'] as const).map(type => (
                   <TouchableOpacity key={type} style={[styles.segment, newShiftType === type && styles.segmentActive]} onPress={() => setNewShiftType(type)}>
                     <Text style={[styles.segmentText, newShiftType === type && styles.segmentTextActive]}>
-                      {type === 'Tutor' ? '入力' : type === 'MyBasket' ? 'まいばす' : '時給'}
+                      {type === 'Tutor' ? '入力' : type === 'MyBasket' ? 'まいばす' : type === 'Other' ? '時給' : 'ジム'}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -658,7 +671,7 @@ export default function App() {
                 <TextInput style={styles.input} placeholder="時給" value={newHourlyWage} onChangeText={setNewHourlyWage} keyboardType="numeric" placeholderTextColor={SUBTEXT_COLOR} />
               )}
               {newShiftType !== 'Other' && (
-                <TextInput style={styles.input} placeholder="金額" value={newShiftSalary} onChangeText={setNewShiftSalary} keyboardType="numeric" editable={newShiftType === 'Tutor'} placeholderTextColor={SUBTEXT_COLOR} />
+                <TextInput style={styles.input} placeholder="金額" value={newShiftSalary} onChangeText={setNewShiftSalary} keyboardType="numeric" editable={newShiftType === 'Tutor' || newShiftType === 'Gym'} placeholderTextColor={SUBTEXT_COLOR} />
               )}
 
               <View style={styles.row}>
@@ -779,10 +792,10 @@ export default function App() {
               <Text style={styles.modalHeader}>予定を編集</Text>
 
               <View style={styles.segmentedControl}>
-                {(['Tutor', 'MyBasket', 'Other'] as const).map(type => (
+                {(['Tutor', 'MyBasket', 'Other', 'Gym'] as const).map(type => (
                   <TouchableOpacity key={type} style={[styles.segment, editType === type && styles.segmentActive]} onPress={() => setEditType(type)}>
                     <Text style={[styles.segmentText, editType === type && styles.segmentTextActive]}>
-                      {type === 'Tutor' ? '入力' : type === 'MyBasket' ? 'まいばす' : '時給'}
+                      {type === 'Tutor' ? '入力' : type === 'MyBasket' ? 'まいばす' : type === 'Other' ? '時給' : 'ジム'}
                     </Text>
                   </TouchableOpacity>
                 ))}
