@@ -51,7 +51,7 @@ export const addShiftToSupabase = async (shift: Shift): Promise<{ data: Shift | 
                     type: shift.type,
                     description: shift.description || null,
                     hourly_rate: shift.hourlyRate || null, // Handle undefined
-                    // color: shift.color || null, // Column missing in DB
+                    color: shift.color || null,
                 }
             ])
             .select();
@@ -94,7 +94,7 @@ export const updateShiftInSupabase = async (shift: Shift): Promise<{ success: bo
                 type: shift.type,
                 description: shift.description || null,
                 hourly_rate: shift.hourlyRate || null,
-                // color: shift.color || null, // Column missing in DB
+                color: shift.color || null,
             })
             .eq('id', shift.id);
 

@@ -22,6 +22,18 @@ const SUBTEXT_COLOR = '#8E8E93';
 const DESTRUCTIVE_COLOR = '#FF3B30'; // iOS Red
 const SUCCESS_COLOR = '#34C759'; // iOS Green
 
+// Default Color Palette for Tutor Shifts
+const COLOR_PALETTE = [
+  '#FF5252', // Red (Default Tutor)
+  '#448AFF', // Blue (MyBasket style)
+  '#34C759', // Green (Gym style)
+  '#FF9500', // Orange
+  '#9C27B0', // Purple
+  '#E91E63', // Pink
+  '#607D8B', // Blue Grey
+  '#00BCD4', // Cyan
+];
+
 // Shadow Style for Cards
 const SHADOW_STYLE = Platform.select({
   ios: {
@@ -57,6 +69,7 @@ export default function App() {
   const [newShiftType, setNewShiftType] = useState<'Tutor' | 'MyBasket' | 'Other' | 'Gym'>('Tutor');
   const [newHourlyWage, setNewHourlyWage] = useState('');
   const [newShiftLocation, setNewShiftLocation] = useState('');
+  const [newShiftColor, setNewShiftColor] = useState<string>(COLOR_PALETTE[0]);
 
   // Range Calculation State
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
@@ -84,10 +97,12 @@ export default function App() {
       const wage = calculateMyBasketWage(selectedDate, newShiftStart, newShiftEnd);
       setNewShiftSalary(wage.toString());
       setNewShiftTitle('まいばす');
+      setNewShiftColor('#448AFF');
     } else if (newShiftType === 'Gym') {
       setNewShiftSalary('0');
       setNewShiftTitle('ルネサンス');
       setNewShiftLocation('ルネサンス');
+      setNewShiftColor('#34C759');
     } else if (newShiftType === 'Other') {
       const rate = parseInt(newHourlyWage, 10);
       if (!isNaN(rate) && rate > 0) {
@@ -307,7 +322,7 @@ export default function App() {
       description: '手動追加',
       hourlyRate: newShiftType === 'Other' ? parseInt(newHourlyWage) : undefined,
       location: newShiftLocation,
-      color: newShiftType === 'Tutor' ? '#FF5252' : newShiftType === 'MyBasket' ? '#448AFF' : newShiftType === 'Gym' ? '#34C759' : '#FF9500',
+      color: newShiftType === 'Tutor' ? newShiftColor : newShiftType === 'MyBasket' ? '#448AFF' : newShiftType === 'Gym' ? '#34C759' : '#FF9500',
     };
 
     // Supabase save
@@ -321,6 +336,7 @@ export default function App() {
     setModalVisible(false);
     setNewShiftTitle('');
     setNewShiftSalary('');
+    setNewShiftColor(COLOR_PALETTE[0]);
   };
 
   const handleRangeCalculation = () => {
@@ -344,6 +360,7 @@ export default function App() {
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
   const [editHourlyRate, setEditHourlyRate] = useState('');
+  const [editShiftColor, setEditShiftColor] = useState<string>(COLOR_PALETTE[0]);
 
   // Edit Pickers
   const [showEditStartTimePicker, setShowEditStartTimePicker] = useState(false);
@@ -387,8 +404,10 @@ export default function App() {
 
     if (shift.type === 'Other' && (shift.title.includes('ルネサンス') || shift.title.includes('ジム'))) {
       setEditType('Gym');
+      setEditShiftColor('#34C759');
     } else {
       setEditType(shift.type as any);
+      setEditShiftColor(shift.color || (shift.type === 'Tutor' ? '#FF5252' : shift.type === 'MyBasket' ? '#448AFF' : '#FF9500'));
     }
 
     setEditStart(shift.startTime || '');
@@ -420,7 +439,7 @@ export default function App() {
         startTime: editStart,
         endTime: editEnd,
         hourlyRate: editHourlyRate ? parseInt(editHourlyRate, 10) : undefined,
-        color: editType === 'Tutor' ? '#FF5252' : editType === 'MyBasket' ? '#448AFF' : editType === 'Gym' ? '#34C759' : '#FF9500',
+        color: editType === 'Tutor' ? editShiftColor : editType === 'MyBasket' ? '#448AFF' : editType === 'Gym' ? '#34C759' : '#FF9500',
       };
 
       const { success, error } = await updateShiftInSupabase(updatedShift);
@@ -674,6 +693,18 @@ export default function App() {
                 <TextInput style={styles.input} placeholder="金額" value={newShiftSalary} onChangeText={setNewShiftSalary} keyboardType="numeric" editable={newShiftType === 'Tutor' || newShiftType === 'Gym'} placeholderTextColor={SUBTEXT_COLOR} />
               )}
 
+              {newShiftType === 'Tutor' && (
+                <View style={styles.colorPaletteContainer}>
+                  {COLOR_PALETTE.map((c) => (
+                    <TouchableOpacity
+                      key={c}
+                      style={[styles.colorSwatch, { backgroundColor: c }, newShiftColor === c && styles.colorSwatchSelected]}
+                      onPress={() => setNewShiftColor(c)}
+                    />
+                  ))}
+                </View>
+              )}
+
               <View style={styles.row}>
                 {Platform.OS === 'web' ? (
                   <input type="time" value={newShiftStart} onChange={(e) => setNewShiftStart(e.target.value)} style={styles.webInput} />
@@ -810,6 +841,18 @@ export default function App() {
 
               <TextInput style={styles.input} placeholder="金額" value={editSalary} onChangeText={setEditSalary} keyboardType="numeric" placeholderTextColor={SUBTEXT_COLOR} />
 
+              {editType === 'Tutor' && (
+                <View style={styles.colorPaletteContainer}>
+                  {COLOR_PALETTE.map((c) => (
+                    <TouchableOpacity
+                      key={c}
+                      style={[styles.colorSwatch, { backgroundColor: c }, editShiftColor === c && styles.colorSwatchSelected]}
+                      onPress={() => setEditShiftColor(c)}
+                    />
+                  ))}
+                </View>
+              )}
+
               <View style={styles.row}>
                 {Platform.OS === 'web' ? (
                   <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} style={styles.webInput} />
@@ -911,4 +954,21 @@ const styles = StyleSheet.create({
   modalBtnSecondary: { backgroundColor: '#E5E5EA' },
   modalBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
   modalBtnTextSecondary: { fontSize: 16, fontWeight: '600', color: TEXT_COLOR },
+  colorPaletteContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 12,
+    paddingHorizontal: 10,
+  },
+  colorSwatch: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorSwatchSelected: {
+    borderColor: '#000',
+    transform: [{ scale: 1.1 }],
+  }
 });
